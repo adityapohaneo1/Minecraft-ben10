@@ -89,6 +89,25 @@
   }
   #alien-banner.show{opacity:1;}
 
+
+  /* ---- Omnitrix info banner (replaces the loose white text): portrait | scrolling message | X ---- */
+  #alien-banner,#status-text{display:none !important;}
+  #ib{position:absolute;top:max(8px,env(safe-area-inset-top,8px));left:50%;width:clamp(272px,42vw,440px);height:60px;transform:translate(-50%,-150%);opacity:0;transition:transform .28s cubic-bezier(.2,.9,.3,1.2),opacity .2s;pointer-events:none;z-index:24;
+    clip-path:polygon(16px 0,calc(100% - 16px) 0,100% 50%,calc(100% - 16px) 100%,16px 100%,0 50%);background:linear-gradient(90deg,#39ff8a,#12a355 50%,#39ff8a);}
+  #ib.show{transform:translate(-50%,0);opacity:1;}
+  #ib .ib-in{position:absolute;inset:3px;clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,14px 100%,0 50%);background:radial-gradient(120% 160% at 50% 0%,#12301f 0%,#08140e 62%,#050c09 100%);display:flex;align-items:center;gap:9px;padding:0 15px 0 17px;}
+  #ib .ib-in::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(57,255,138,.05) 0 2px,transparent 2px 9px);pointer-events:none;}
+  .ib-pic{position:relative;flex:0 0 44px;width:44px;height:44px;border-radius:100%;border:2px solid var(--green);background:#07140d;overflow:hidden;box-shadow:0 0 8px rgba(57,255,138,.6);display:flex;align-items:center;justify-content:center;color:var(--green);font-weight:900;font-size:20px;}
+  .ib-pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:100%;}
+  .ib-mid{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
+  #ib-who{font-size:8.5px;letter-spacing:2.2px;color:var(--green);font-weight:800;opacity:.9;line-height:1.1;}
+  .ib-scroll{overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7px,#000 calc(100% - 7px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 7px,#000 calc(100% - 7px),transparent 100%);}
+  #ib-txt{display:inline-block;font-size:13px;font-weight:700;letter-spacing:1.2px;color:#eafff2;text-shadow:0 0 6px rgba(57,255,138,.5);padding:0 6px;will-change:transform;}
+  #ib-txt.mq{animation:ibmq var(--t,2.6s) linear .25s forwards;}
+  @keyframes ibmq{to{transform:translateX(var(--dx,0px));}}
+  #ib-x{pointer-events:auto;cursor:pointer;padding:0;font-family:inherit;background:#07140d;font-size:18px;line-height:1;}
+  #ib-x:active{transform:scale(.88);background:#123a24;}
+
   #flash-overlay{position:fixed;inset:0;background:var(--green);opacity:0;pointer-events:none;z-index:60;}
   #damage-overlay{position:fixed;inset:0;pointer-events:none;z-index:55;
     box-shadow:inset 0 0 120px 20px rgba(255,0,0,0);transition:box-shadow 0.2s;}
@@ -418,6 +437,7 @@
   <div id="omni-dial"></div>
   <div id="omni-x"><svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></div>
   <div id="alien-banner"></div>
+  <div id="ib"><div class="ib-in"><div class="ib-pic" id="ib-pic"><img id="ib-img" alt=""><span id="ib-fb"></span></div><div class="ib-mid"><div id="ib-who"></div><div class="ib-scroll"><div id="ib-txt"></div></div></div><button type="button" id="ib-x" class="ib-pic" aria-label="Dismiss">&#10005;</button></div></div>
   <div id="actions"></div>
   <div id="squad-panel"></div>
   <div id="crosshair"></div>
@@ -468,7 +488,9 @@ window.addEventListener('error',function(e){
 <script src="glb-libs.js"></script>
 <script src="models.js"></script>
 <script src="props.js"></script>
+<script src="terrain_assets.js"></script>
 <script src="world.js"></script>
+<script src="terrain.js"></script>
 <script src="vfx.js"></script>
 <script src="glbbody.js"></script>
 <script>
@@ -939,6 +961,7 @@ function generateChunk(cx, cz){
   const chunk = { key, cx, cz, meshes, freeSlots:{}, usedCount:{}, colliders:[], props:{ meshes:[], colliders:[] } };
   chunks.set(key, chunk);
   const x0 = cx*CHUNK - HALF, z0 = cz*CHUNK - HALF;
+  if(!TERR.lotOK(x0+CHUNK/2,z0+CHUNK/2,CHUNK/2+1)) return chunk;     // hills, beaches, rivers: the heightfield mesh is the ground there
   for(let lx=0; lx<CHUNK; lx++){
     for(let lz=0; lz<CHUNK; lz++){
       const gx = x0+lx, gz = z0+lz, h = surfaceHeight(gx,gz), topType = zoneType(gx,gz);
@@ -1424,6 +1447,7 @@ function planLots(px,pz,sf,horizon,q){
   for(let bx=bx0;bx<=bx1;bx++) for(let bz=bz0;bz<=bz1;bz++) for(let li=0;li<4;li++){
     const cx=bx*PITCH+((li&1)?LOT_OFF:-LOT_OFF), cz=bz*PITCH+((li&2)?LOT_OFF:-LOT_OFF);
     if(Math.abs(cx)>WORLD_LIMIT-30||Math.abs(cz)>WORLD_LIMIT-30) continue;
+    if(!TERR.lotOK(cx,cz)&&!WORLDDEF.landmarkAtLot(bx,bz,li)) continue;
     let best=1e9; for(let k=0;k<samples.length;k++){ const sm=samples[k], d=Math.hypot(cx-sm[0],cz-sm[1]); if(d<=sm[2]) best=Math.min(best,k?d*1.15:d); }
     if(best>=1e9) continue; const key=lotKey(bx,bz,li); want.add(key); if(!lots.has(key)) missing.push([bx,bz,li,best]);
   }
@@ -1489,6 +1513,7 @@ function* skylineJob(px,pz,q){
   outer: for(const [dx,dz] of offs){
     for(let li=0;li<4;li++){ if(lots.has(lotKey(bx0+dx,bz0+dz,li))) continue; const sp=lotSpec(bx0+dx,bz0+dz,li); if(!sp.h||sp.kind==='park') continue; if(Math.hypot(sp.cx-px,sp.cz-pz)>R) continue;
       if(Math.abs(sp.cx)>WORLD_LIMIT||Math.abs(sp.cz)>WORLD_LIMIT) continue;
+      if(!TERR.lotOK(sp.cx,sp.cz)&&!WORLDDEF.landmarkAtLot(bx0+dx,bz0+dz,li)) continue;
       const o=n*16; arr[o]=sp.w*(sp.kw||.96); arr[o+1]=0; arr[o+2]=0; arr[o+3]=0; arr[o+4]=0; arr[o+5]=sp.h; arr[o+6]=0; arr[o+7]=0; arr[o+8]=0; arr[o+9]=0; arr[o+10]=sp.d*(sp.kw||.96); arr[o+11]=0; arr[o+12]=sp.cx; arr[o+13]=GY+sp.h/2; arr[o+14]=sp.cz; arr[o+15]=1;
       col.setHex(SKY_COL[sp.kind]||0x888888); const vv=.86+((sp.seed>>>7)%100)/360; car[n*3]=col.r*vv; car[n*3+1]=col.g*vv; car[n*3+2]=col.b*vv;
       if(++n>=cap) break outer; }
@@ -1553,16 +1578,55 @@ const RS={cx:1e9,cz:1e9,arm:[],cen:[],grass:null};
     RS.cen[(a-1)*3+(b-1)]=mk(c=>drawCenterTex(c,a,b),ROAD_LV[a].t*2*RPX,ROAD_LV[b].t*2*RPX,400); }
   // far-field grass (voxel ground only exists near the player); roads sit just above it
   const gc=document.createElement('canvas'); gc.width=gc.height=64; gc.getContext('2d').drawImage(grassPattern(),0,0); const gt=new THREE.CanvasTexture(gc); gt.wrapS=gt.wrapT=THREE.RepeatWrapping; gt.repeat.set(80,80);
-  const pl=new THREE.Mesh(new THREE.PlaneGeometry(1280,1280),new THREE.MeshLambertMaterial({map:gt})); pl.rotation.x=-Math.PI/2; pl.position.y=GY-0.03; pl.receiveShadow=true; pl.frustumCulled=false; scene.add(pl); RS.grass=pl;
+  // ---- terrain heightfield mesh: follows the player, vertices sit on a fixed world grid so nothing pops when it re-centres ----
+  gt.repeat.set(1,1);
+  const N=140, S=10, NV=(N+1)*(N+1), G=N+3;
+  const tgeo=new THREE.BufferGeometry(), tpos=new Float32Array(NV*3), tnor=new Float32Array(NV*3), tuv=new Float32Array(NV*2), ttc=new Float32Array(NV*3), ttw=new Float32Array(NV), tidx=new Uint16Array(N*N*6), HH=new Float32Array(G*G);
+  { let q=0; for(let j=0;j<N;j++) for(let i=0;i<N;i++){ const a0=j*(N+1)+i; tidx[q++]=a0; tidx[q++]=a0+N+1; tidx[q++]=a0+1; tidx[q++]=a0+1; tidx[q++]=a0+N+1; tidx[q++]=a0+N+2; } }
+  tgeo.setIndex(new THREE.BufferAttribute(tidx,1));
+  tgeo.setAttribute('position',new THREE.BufferAttribute(tpos,3)); tgeo.setAttribute('normal',new THREE.BufferAttribute(tnor,3)); tgeo.setAttribute('uv',new THREE.BufferAttribute(tuv,2));
+  tgeo.setAttribute('tc',new THREE.BufferAttribute(ttc,3)); tgeo.setAttribute('tw',new THREE.BufferAttribute(ttw,1));
+  const tmat=new THREE.MeshLambertMaterial({map:gt});
+  tmat.onBeforeCompile=sh=>{ sh.vertexShader=sh.vertexShader.replace('void main() {','attribute vec3 tc; attribute float tw; varying vec3 vTc; varying float vTw;\nvoid main() { vTc=tc; vTw=tw;');
+    sh.fragmentShader=sh.fragmentShader.replace('void main() {','varying vec3 vTc; varying float vTw;\nvoid main() {').replace('#include <map_fragment>','#include <map_fragment>\n diffuseColor.rgb=mix(diffuseColor.rgb, vTc*(0.55+diffuseColor.g*0.9), vTw);'); };
+  const pl=new THREE.Mesh(tgeo,tmat); pl.receiveShadow=true; pl.frustumCulled=false; scene.add(pl); RS.grass=pl;
+  const _sm=(a,b,x)=>{ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); };
+  RS.tm={cx:1e9,cz:1e9,N,S,job:null};
+  const npos=new Float32Array(NV*3), nnor=new Float32Array(NV*3), nuv=new Float32Array(NV*2), ntc=new Float32Array(NV*3), ntw=new Float32Array(NV);
+  // rebuilt a slice of rows per frame into spare buffers, then swapped in at once (no half-updated mesh, no 12 ms hitch)
+  RS.terrainUpdate=function(px,pz,force){
+    const T=RS.tm;
+    if(!T.job){ if(!force&&Math.hypot(px-T.cx,pz-T.cz)<48) return; T.job={px,pz,i0:Math.round(px/S)-N/2,j0:Math.round(pz/S)-N/2,ph:0,row:0}; }
+    const J=T.job, i0=J.i0, j0=J.j0; let budget=force?1e9:40;
+    while(budget>0&&J.ph<2){
+      if(J.ph===0){ const j=J.row; for(let i=0;i<G;i++) HH[j*G+i]=TERR.h((i0+i-1)*S,(j0+j-1)*S); if(++J.row>=G){ J.ph=1; J.row=0; } }
+      else { const j=J.row;
+        for(let i=0;i<=N;i++){
+          const v=j*(N+1)+i, x=(i0+i)*S, z=(j0+j)*S, hc=HH[(j+1)*G+i+1], hx=HH[(j+1)*G+i+2]-HH[(j+1)*G+i], hz=HH[(j+2)*G+i+1]-HH[j*G+i+1];
+          npos[v*3]=x; npos[v*3+1]=GY+hc-.03; npos[v*3+2]=z; nuv[v*2]=x/16; nuv[v*2+1]=z/16;
+          const nl=1/Math.hypot(hx/(2*S),1,hz/(2*S)); nnor[v*3]=-hx/(2*S)*nl; nnor[v*3+1]=nl; nnor[v*3+2]=-hz/(2*S)*nl;
+          let r=0,g=0,b=0,w=0; const cl=hc===0?0:TERR.cls(x,z), sl=Math.hypot(hx,hz)/(2*S);
+          if(hc<-.25){ const d=1-Math.min(.5,-hc/14); r=.46*d; g=.42*d; b=.30*d; w=1; }
+          else if(cl===1||cl===2){ const k=1-_sm(.3,1.5,hc); if(k>0){ r=.86; g=.78; b=.53; w=k; } }
+          if(hc>1.5||(w===0&&sl>.2)){ const n=.5+.5*Math.sin(x*.011+Math.sin(z*.007)*2)*Math.sin(z*.015), fr=.8+.4*n;
+            let hr=.27*fr, hg=.5*fr, hb=.2*fr, hw=.95*_sm(1.5,10,hc); const rk=Math.max(_sm(.36,.62,sl),_sm(120,175,hc)); hr+=(.52-hr)*rk; hg+=(.5-hg)*rk; hb+=(.47-hb)*rk; hw=Math.max(hw,rk);
+            if(hw>w){ r=hr; g=hg; b=hb; w=hw; } }
+          ntc[v*3]=r; ntc[v*3+1]=g; ntc[v*3+2]=b; ntw[v]=w;
+        }
+        if(++J.row>N){ J.ph=2; } }
+      budget--;
+    }
+    if(J.ph>=2){ tpos.set(npos); tnor.set(nnor); tuv.set(nuv); ttc.set(ntc); ttw.set(ntw); for(const k of ['position','normal','uv','tc','tw']) tgeo.attributes[k].needsUpdate=true; T.cx=J.px; T.cz=J.pz; T.job=null; }
+  };
 })();
 function updateGroundLayers(px,pz){
-  RS.grass.position.x=16*Math.round(px/16); RS.grass.position.z=16*Math.round(pz/16);
+  RS.terrainUpdate(px,pz);
   if(Math.hypot(px-RS.cx,pz-RS.cz)<56) return; RS.cx=px; RS.cz=pz;
   const R=720, n0=Math.floor((px-R-LINE_OFF)/PITCH), n1=Math.ceil((px+R-LINE_OFF)/PITCH), m0=Math.floor((pz-R-LINE_OFF)/PITCH), m1=Math.ceil((pz+R-LINE_OFF)/PITCH), Y=GY+.02;
   const ac=new Array(9).fill(0), cc=new Array(9).fill(0), d=dummy;
   const put=(mesh,cnt,i,x,z,ry,sx,sz)=>{ if(cnt[i]>=mesh.instanceMatrix.count) return; d.position.set(x,Y,z); d.rotation.set(0,ry,0); d.scale.set(sx,1,sz); d.updateMatrix(); mesh.setMatrixAt(cnt[i]++,d.matrix); };
   for(let n=n0;n<=n1;n++){ const X=LINE_OFF+n*PITCH; if(Math.abs(X)>WORLD_LIMIT) continue; const ln=lineLevel(n), tn=ROAD_LV[ln].t;
-    for(let m=m0;m<=m1;m++){ const Z=LINE_OFF+m*PITCH; if(Math.abs(Z)>WORLD_LIMIT) continue; const lm=lineLevel(m), tm=ROAD_LV[lm].t, Ln=40-tm, Lm=40-tn;
+    for(let m=m0;m<=m1;m++){ const Z=LINE_OFF+m*PITCH; if(Math.abs(Z)>WORLD_LIMIT||!TERR.roadZone(X,Z)) continue; const lm=lineLevel(m), tm=ROAD_LV[lm].t, Ln=40-tm, Lm=40-tn;
       const ci=(ln-1)*3+(lm-1); put(RS.cen[ci],cc,ci,X,Z,0,tn*2,tm*2);
       const ai=(ln-1)*3+(lm-1), bi=(lm-1)*3+(ln-1);                                        // road n (along z) arms / road m (along x) arms
       put(RS.arm[ai],ac,ai,X,Z-(tm+Ln/2),0,tn*2,Ln); put(RS.arm[ai],ac,ai,X,Z+(tm+Ln/2),Math.PI,tn*2,Ln);
@@ -1582,19 +1646,32 @@ function drainChunkQueueFully(){
 
 // water plane — generously sized and re-centered on the player each streaming update so it always covers the loaded area
 const water = new THREE.Mesh(
-  new THREE.PlaneGeometry(CHUNK*(LOAD_RADIUS*2+3), CHUNK*(LOAD_RADIUS*2+3)),
+  new THREE.PlaneGeometry(3400,3400),
   new THREE.MeshLambertMaterial({ color:0x2d6fae, transparent:true, opacity:0.65 })
 );
 water.rotation.x = -Math.PI/2; water.position.y = WATER_LEVEL + 0.4;
-water.visible=false; scene.add(water);
+water.visible=true; scene.add(water);
+{ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d'); g.fillStyle='#ffffff'; g.fillRect(0,0,128,128);
+  let sd=7; const rn=()=>{ sd=(sd*16807)%2147483647; return sd/2147483647; };
+  for(let i=0;i<300;i++){ g.fillStyle='rgba(150,205,255,'+(.10+rn()*.28)+')'; g.beginPath(); g.ellipse(rn()*128,rn()*128,2.5+rn()*8,.8+rn()*1.8,0,0,6.283); g.fill(); }
+  for(let i=0;i<160;i++){ g.fillStyle='rgba(30,80,140,'+(.06+rn()*.14)+')'; g.beginPath(); g.ellipse(rn()*128,rn()*128,3+rn()*9,1+rn()*2.2,0,0,6.283); g.fill(); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(170,170); water.material.map=t; water.material.color.set(0x3d86c6); water.material.opacity=.8; water.material.needsUpdate=true; }
 
 // Returns the Y of the walkable surface (top face of the highest solid block).
 // Y of the walkable surface. With no feet height it is the terrain top (old behaviour, every existing caller).
 // With fy it is the highest surface - terrain, roof, landing, ramp, pitched roof - that is at most a step above fy.
+const DECKS=[];                                   // extra walkable bridge decks over water: {pts:[[x,z]..],hw,y}
+function bridgeDeck(x,z){
+  if((axisInfo(x)||axisInfo(z))&&TERR.roadZone(x,z)) return GY;
+  for(let i=0;i<DECKS.length;i++){ const d=DECKS[i], P=d.pts; for(let k=0;k<P.length-1;k++){ const ax=P[k][0],az=P[k][1],dx=P[k+1][0]-ax,dz=P[k+1][1]-az, t=Math.max(0,Math.min(1,((x-ax)*dx+(z-az)*dz)/(dx*dx+dz*dz))); if(Math.hypot(x-ax-dx*t,z-az-dz*t)<d.hw) return d.y; } }
+  return null;
+}
 function groundTopAt(x,z,fy){
   const gx = Math.round(x), gz = Math.round(z);
   const t = columnHeight[colKey(gx,gz)];
-  let best = Math.max(t===undefined ? 1 : t, -14) + 0.5;      // unloaded columns are flat ground (surfaceHeight=1): the world is walkable before its voxels exist
+  let best;
+  if(t===undefined){ const th=TERR.h(x,z); best=GY+th; if(th<-.25){ const bd=bridgeDeck(x,z); if(bd!==null&&(fy===undefined||bd<=fy+STEP_UP)&&bd>best) best=bd; } }   // no voxels here: the terrain heightfield (flat 1.5 across the city plateau)
+  else best = Math.max(t, -14) + 0.5;
   if(fy===undefined) return best;
   const lim = fy + STEP_UP;
   for(let pp=0;pp<3;pp++){ const arr=pp===2?vehCols:(pp?colliders:cellList(x,z)); if(!arr) continue; for(let i=arr.length-1;i>=0;i--){
@@ -1611,8 +1688,8 @@ function groundTopAt(x,z,fy){
 /* =========================================================================
    DAY / NIGHT CYCLE
 ========================================================================= */
-const DAY_LENGTH = 99999999; // effectively frozen
-let dayT = 0.5; // locked at noon = full daylight
+const DAY_LENGTH = 9999999999999; // seconds per full cycle
+let dayT = 0.5; // start mid-morning
 const skyDay = new THREE.Color(0x8fc7f2), skyNight = new THREE.Color(0x0a1020);
 const fogDay = new THREE.Color(0x8fc7f2), fogNight = new THREE.Color(0x0a1020);
 function updateDayNight(dt){
@@ -2337,20 +2414,27 @@ function flashTransform(op,col){
   el.style.background = col||''; el.style.transition = 'none'; el.style.opacity = String(op==null?0.85:op);
   requestAnimationFrame(()=>{ el.style.transition = 'opacity 0.4s'; el.style.opacity = '0'; });
 }
-let bannerTimer=null;
-function bannerText(t){
-  const el = document.getElementById('alien-banner');
-  el.textContent = t; el.classList.add('show');
-  clearTimeout(bannerTimer);
-  bannerTimer = setTimeout(()=> el.classList.remove('show'), 1100);
+/* Every on-screen message goes through this Omnitrix banner. Speakers alternate (Gwen / Grandpa Max); portraits load from www/portraits/ and fall back to an initial badge. */
+const IB={t:null,who:1,vis:false,last:'',lastT:0,imgOk:{},els:null};
+const IB_WHO=[{name:'GWEN',img:'portraits/gwen.png',ini:'G'},{name:'GRANDPA MAX',img:'portraits/grandpa_max.png',ini:'M'}];
+function infoBanner(t){ try{ infoBanner0(t); }catch(e){} }
+function infoBanner0(t){
+  if(!t) return; const E=IB.els||(IB.els={ib:document.getElementById('ib'),img:document.getElementById('ib-img'),fb:document.getElementById('ib-fb'),who:document.getElementById('ib-who'),txt:document.getElementById('ib-txt')}); if(!E.ib) return;
+  const now=performance.now(); t=String(t).replace(/\s+/g,' ').trim();
+  if(IB.vis&&t===IB.last&&now-IB.lastT<900){ clearTimeout(IB.t); IB.t=setTimeout(infoBannerHide,3000); return; }
+  if(!IB.vis) IB.who=1-IB.who;
+  const w=IB_WHO[IB.who]; E.who.textContent=w.name; E.fb.textContent=w.ini;
+  if(IB.imgOk[w.img]===false){ E.img.style.display='none'; E.fb.style.display=''; }
+  else { E.img.onload=()=>{ IB.imgOk[w.img]=true; E.img.style.display=''; E.fb.style.display='none'; }; E.img.onerror=()=>{ IB.imgOk[w.img]=false; E.img.style.display='none'; E.fb.style.display=''; }; E.img.style.display='none'; E.fb.style.display=''; E.img.src=w.img; }
+  E.txt.classList.remove('mq'); E.txt.style.removeProperty('--dx'); E.txt.textContent=t; void E.txt.offsetWidth;
+  const box=E.txt.parentElement, over=E.txt.scrollWidth-box.clientWidth;
+  if(over>2){ E.txt.style.setProperty('--dx',-(over+6)+'px'); E.txt.style.setProperty('--t',Math.max(1.2,Math.min(2.5,over/55))+'s'); E.txt.classList.add('mq'); }
+  IB.last=t; IB.lastT=now; IB.vis=true; E.ib.classList.add('show'); clearTimeout(IB.t); IB.t=setTimeout(infoBannerHide,3000);
 }
-let statusTimer=null;
-function statusText(t){
-  const el = document.getElementById('status-text');
-  el.textContent = t; el.classList.add('show');
-  clearTimeout(statusTimer);
-  statusTimer = setTimeout(()=> el.classList.remove('show'), 1400);
-}
+function infoBannerHide(){ clearTimeout(IB.t); IB.vis=false; const e=document.getElementById('ib'); if(e) e.classList.remove('show'); }
+(function(){ const x=document.getElementById('ib-x'); if(x){ const f=e=>{ e.preventDefault(); e.stopPropagation(); infoBannerHide(); }; x.addEventListener('click',f); x.addEventListener('touchstart',f,{passive:false}); } })();
+function bannerText(t){ infoBanner(t); }
+function statusText(t){ infoBanner(t); }
 
 /* =========================================================================
    STAGE 11 - OMNITRIX
@@ -2810,6 +2894,7 @@ const ENEMY_LOOK = {
   elite: {skin:0x9a7a62,bottom:0x0c0c18,accent:0xcc2222,torsoW:.82,torsoD:.42,armT:.22,legT:.26,legLen:1.05,torsoH:1.2}
 };
 function makeEnemy(type, x, z, y0){
+  if(y0===undefined&&groundTopAt(x,z)<.5){ for(let k=0;k<10;k++){ const a=Math.random()*6.283, d=16+Math.random()*30, nx=Math.round(player.pos.x+Math.cos(a)*d), nz=Math.round(player.pos.z+Math.sin(a)*d); if(groundTopAt(nx,nz)>=.5){ x=nx; z=nz; break; } } }   // never spawn in the river or the sea
   const stats = ENEMY_STATS[type] || ENEMY_STATS.normal;
   const y = y0!==undefined ? y0 : groundTopAt(x,z);
   const look=Object.assign({},ENEMY_LOOK[type]||ENEMY_LOOK.normal,{top:stats.color,sleeve:true});
@@ -2923,7 +3008,7 @@ function updateEnemySpawning(dt){
   for(let tries=0; tries<6; tries++){
     const ang = Math.random()*Math.PI*2, dist = 28 + Math.random()*20;
     const x = Math.round(player.pos.x + Math.cos(ang)*dist), z = Math.round(player.pos.z + Math.sin(ang)*dist);
-    if(blockedAt(x,z,groundTopAt(x,z))) continue;
+    if(groundTopAt(x,z)<.5||blockedAt(x,z,groundTopAt(x,z))) continue;
     makeEnemy(pickEnemyType(), x, z);
     break;
   }
@@ -3910,6 +3995,103 @@ function wvSwingPoseApply(P,parts,w){
 }
 function updateWildvine(dt){ updateStab(dt); updateWeb(dt); updateSwing(dt); }
 window.__wv={swingFindAnchor,update:updateWildvine,WS,SW,WEB,wvStabStart,swingTry,wvWeb,wvSeeds,wvBone,wvHandPos,wvShoulderPos};
+/* =========================================================================
+   SCENERY - bridges over the rivers, forests on the hills, distant mountains, hero bridges (www/terrain_assets.js: base64 GLBs)
+========================================================================= */
+const SCN={ready:false,lastB:[1e9,1e9],lastT:[1e9,1e9],trees:[],mt:[],hero:null,helix:null,tcap:300,tR:260};
+(function(){
+  const _sm=(a,b,x)=>{ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); };
+  const boxG=new THREE.BoxGeometry(1,1,1);
+  const mkI=(col,cap)=>{ const m=new THREE.InstancedMesh(boxG,new THREE.MeshLambertMaterial({color:col}),cap); m.count=0; m.frustumCulled=false; m.receiveShadow=true; scene.add(m); return m; };
+  const IB={deck:mkI(0x8c8c86,320), rail:mkI(0xb9bfc6,900), pier:mkI(0x6f6f73,300)};
+  const _d=new THREE.Object3D();
+  const put=(m,x,y,z,sx,sy,sz)=>{ if(m.count>=m.instanceMatrix.count) return; _d.position.set(x,y,z); _d.scale.set(sx,sy,sz); _d.updateMatrix(); m.setMatrixAt(m.count++,_d.matrix); };
+  const HEROS=[{axis:'x',c:760,a:-1700,b:-1580}];            // road spans carried by a bridge model instead of the plain deck
+  function emit(axis,c,t,a,b){
+    for(const h of HEROS) if(h.axis===axis&&Math.abs(h.c-c)<1&&b>h.a&&a<h.b) return;
+    a-=3; b+=3; const len=b-a, mid=(a+b)/2, X=axis==='x';
+    const P=(u,v,y,su,sy,sv,m)=>X?put(m,u,y,v,su,sy,sv):put(m,v,y,u,sv,sy,su);        // u along the road, v across
+    P(mid,c,GY-.55,len,1.0,2*t,IB.deck);
+    for(const sg of [-1,1]){ const v=c+sg*(t-.2); P(mid,v,GY+.55,len,1.1,.3,IB.rail); for(let u=a+2;u<=b-1;u+=8) P(u,v,GY+.8,.5,1.6,.5,IB.rail); }
+    const np=Math.max(1,Math.floor(len/34));
+    for(let i=1;i<np+ (len>60?0:1);i++){ const u=a+len*i/np; const x=X?u:c, z=X?c:u, bed=GY+TERR.h(x,z); const top=GY-1.0, hgt=Math.max(1,top-bed+.6); P(u,c,top-hgt/2,2.6,hgt,2*t*.55,IB.pier); }
+  }
+  function bridgesRefresh(px,pz){
+    const R=520; IB.deck.count=IB.rail.count=IB.pier.count=0; SCN.lastB=[px,pz];
+    for(const axis of ['x','z']){ const p=axis==='x'?pz:px, o=axis==='x'?px:pz, n0=Math.floor((p-R-LINE_OFF)/PITCH), n1=Math.ceil((p+R-LINE_OFF)/PITCH);
+      for(let n=n0;n<=n1;n++){ const c=LINE_OFF+n*PITCH, t=ROAD_LV[lineLevel(n)].t; let a=null, u=Math.floor((o-R)/8)*8;
+        for(;u<=o+R+8;u+=8){ const x=axis==='x'?u:c, z=axis==='x'?c:u, wet=TERR.h(x,z)<-.25&&TERR.roadZone(x,z);
+          if(wet&&a===null) a=u; else if(!wet&&a!==null){ emit(axis,c,t,a,u); a=null; } }
+        if(a!==null) emit(axis,c,t,a,u); } }
+    for(const k in IB){ IB[k].instanceMatrix.needsUpdate=true; }
+  }
+  /* ---- models ---- */
+  const b2buf=s=>{ const bin=atob(s), n=bin.length, u=new Uint8Array(n); for(let i=0;i<n;i++) u[i]=bin.charCodeAt(i); return u.buffer; };
+  const parse=s=>new Promise((res,rej)=>{ try{ new THREE.GLTFLoader().parse(b2buf(s),'',res,rej); }catch(e){ rej(e); } });
+  const lam=(m,extra)=>{ const n=new THREE.MeshLambertMaterial(Object.assign({color:m.color?m.color.clone():0xffffff,map:m.map||null,side:THREE.DoubleSide},extra||{})); if(m.map){ m.map.encoding=THREE.sRGBEncoding; } return n; };
+  const TC=(()=>{ const q=QUALITY.level; return q==='LOW'?{cap:140,R:200}:q==='HIGH'?{cap:420,R:300}:{cap:260,R:250}; })();
+  SCN.tcap=TC.cap; SCN.tR=TC.R; let treeMeshes=[];
+  const hash=(a,b,c)=>{ let h=(Math.imul(a|0,374761393)+Math.imul(b|0,668265263)+Math.imul(c|0,2147483629))|0; h=Math.imul(h^(h>>>15),2246822519); h=Math.imul(h^(h>>>13),3266489917); return ((h^(h>>>16))>>>0)/4294967296; };
+  function treesRefresh(px,pz){
+    if(!treeMeshes.length) return; SCN.lastT=[px,pz];
+    const CS=22, R=TC.R, list=[];
+    for(let ix=Math.floor((px-R)/CS);ix<=Math.floor((px+R)/CS);ix++) for(let iz=Math.floor((pz-R)/CS);iz<=Math.floor((pz+R)/CS);iz++) for(let k=0;k<2;k++){
+      const r0=hash(ix,iz,k*7+1), x=(ix+hash(ix,iz,k*7+2))*CS, z=(iz+hash(ix,iz,k*7+3))*CS, d=Math.hypot(x-px,z-pz); if(d>R) continue;
+      if(r0>.78) continue; const hc=TERR.h(x,z); if(hc<1.8) continue;
+      const dens=_sm(2,26,hc)*(1-_sm(105,165,hc)); if(hash(ix,iz,k*7+4)>dens) continue;
+      if(TERR.slope(x,z)>.5) continue; list.push([d,x,hc,z,.8+hash(ix,iz,k*7+5)*.7,hash(ix,iz,k*7+6)*6.283]); }
+    list.sort((a,b)=>a[0]-b[0]); const n=Math.min(list.length,TC.cap);
+    for(const im of treeMeshes){ for(let i=0;i<n;i++){ const t=list[i]; _d.position.set(t[1],GY+t[2]-.2,t[3]); _d.rotation.set(0,t[5],0); _d.scale.setScalar(t[4]); _d.updateMatrix(); im.setMatrixAt(i,_d.matrix); } im.count=n; im.instanceMatrix.needsUpdate=true; }
+    _d.rotation.set(0,0,0);
+  }
+  /* ---- distant mountain ring: projected onto a 500 unit sphere around the camera (never fogged out, never clipped) ---- */
+  const _white=new THREE.Color(0xffffff);
+  const MT=[]; const MTS=[[0,-1],[.55,-.8],[1.1,-.35],[1.6,.1],[2.1,.5],[2.7,.9],[3.3,1],[3.9,.7],[4.5,.3],[5.1,-.1],[5.7,-.55]];
+  function mountainsBuild(g){
+    let src=null; g.scene.traverse(o=>{ if(o.isMesh&&!src) src=o; }); if(!src) return;
+    const mat=lam(src.material); mat.fog=false; mat.emissive=new THREE.Color(0x4a5870);
+    for(let i=0;i<MTS.length;i++){ const a=MTS[i][0], r=1+.0*i, x=Math.cos(a)*6600, z=Math.sin(a)*4600, m=new THREE.Mesh(src.geometry,mat);
+      const sc=1.5+hash(i,3,3)*1.1; m.userData={wx:x,wz:z,sc,base:-30}; m.rotation.y=hash(i,9,9)*6.28; m.frustumCulled=false; scene.add(m); MT.push(m); }
+    SCN.mtMat=mat;
+  }
+  function mountainsUpdate(px,pz){
+    if(!MT.length) return; const cp=camera.position, K=500;
+    SCN.mtMat.color.copy(scene.fog.color).lerp(_white,.5);
+    for(const m of MT){ const u=m.userData, dx=u.wx-cp.x, dz=u.wz-cp.z, D=Math.hypot(dx,dz), k=D>K?K/D:1;
+      m.position.set(cp.x+dx*k, cp.y+(u.base-cp.y)*k, cp.z+dz*k); m.scale.setScalar(u.sc*k); }
+  }
+  /* ---- hero bridges ---- */
+  function placeHero(g){
+    const m=g.scene; m.traverse(o=>{ if(o.isMesh) o.material=lam(o.material); });
+    m.scale.setScalar(.667); m.position.set(-1639,GY,760); scene.add(m); SCN.hero=m;
+  }
+  function placeHelix(g){
+    const m=g.scene; m.traverse(o=>{ if(o.isMesh) o.material=lam(o.material); });
+    const P=[1834.97,115.06], th=.8752; m.position.set(P[0],GY,P[1]); m.rotation.y=th; scene.add(m); SCN.helix=m;
+    const ct=Math.cos(th), st=Math.sin(th), pts=[[-70,-123],[-51.8,-106.8],[-28.2,-83.8],[-2.2,-60.2],[12.9,-35.3],[30.3,-12.1],[38.5,12.7],[50.5,36.1],[56.5,60.7],[57.3,81.4],[62.9,108.2],[64,125]].map(p=>[p[0]*ct+p[1]*st+P[0],-p[0]*st+p[1]*ct+P[1]]);
+    DECKS.push({pts,hw:4.4,y:GY});
+  }
+  SCN.update=function(px,pz,dt){
+    if(!SCN.ready) return;
+    if(Math.hypot(px-SCN.lastB[0],pz-SCN.lastB[1])>110) bridgesRefresh(px,pz);
+    if(Math.hypot(px-SCN.lastT[0],pz-SCN.lastT[1])>45) treesRefresh(px,pz);
+    mountainsUpdate(px,pz);
+    if(SCN.hero) SCN.hero.visible=Math.hypot(px+1639,pz-760)<620;
+    if(SCN.helix) SCN.helix.visible=Math.hypot(px-1835,pz-115)<620;
+  };
+  SCN.init=async function(){
+    const D=window.__TERR_DATA; if(!D||!THREE.GLTFLoader) return;
+    try{
+      const [tr,mo,mi,he]=await Promise.all([parse(D.tree),parse(D.mountain),parse(D.mindaugas),parse(D.helix)]);
+      tr.scene.traverse(o=>{ if(!o.isMesh) return; const mt=lam(o.material,{alphaTest:.45,emissive:new THREE.Color(0x24401a)}); mt.transparent=false; const im=new THREE.InstancedMesh(o.geometry,mt,TC.cap); im.count=0; im.frustumCulled=false; scene.add(im); treeMeshes.push(im); });
+      mountainsBuild(mo); placeHero(mi); placeHelix(he);
+    }catch(e){ console.warn('scenery',e); }
+    SCN.ready=true; bridgesRefresh(player.pos.x,player.pos.z); treesRefresh(player.pos.x,player.pos.z);
+  };
+  SCN.dbg={IB,treeMeshes:()=>treeMeshes,MT,bridgesRefresh,treesRefresh};
+})();
+setTimeout(()=>{ try{ SCN.init(); }catch(e){ console.warn('SCN',e); } },150);
+
 function updateStreams(dt){
   updateWildvine(dt);
   if(player.wvJumpT>0){ player.wvJumpT-=dt; if(player.wvJumpT<=0){ player.wvJumpT=0; if(player.form.id==='wildvine'&&player.alive) doJump(); } }
@@ -3979,7 +4161,7 @@ const CIV_MAX={LOW:10,MEDIUM:18,HIGH:26};
 function pickTarget(en){
   for(let i=0;i<8;i++){
     const a=Math.random()*6.28, r=en.gang?2+Math.random()*4:4+Math.random()*10, x=en.home.x+Math.cos(a)*r, z=en.home.z+Math.sin(a)*r;
-    if(Math.abs(x)>WORLD_LIMIT-4||Math.abs(z)>WORLD_LIMIT-4||blockedAt(x,z,GY)) continue;
+    if(!TERR.inBounds(x,z)||TERR.h(x,z)<-1.2||blockedAt(x,z,GY)) continue;
     if(!en.gang&&zoneType(Math.round(x),Math.round(z))==='grass'&&Math.random()<.85) continue;
     en.target.set(x,0,z); return;
   }
@@ -4617,8 +4799,8 @@ function carProbeBlocked(p,x,z){
   const K=CAR_S/1.9, P=[[0,2.0*K],[.85*K,1.7*K],[-.85*K,1.7*K],[.85*K,-1.7*K],[-.85*K,-1.7*K],[0,-2.0*K]];
   for(const q of P){ const px=x+rx*q[0]+fx*q[1], pz=z+rz*q[0]+fz*q[1];
     if(blockedAt(px,pz,by+.05,true)) return true;
-    if(groundTopAt(px,pz,by)-by>.5) return true;
-    if(Math.abs(px)>WORLD_LIMIT||Math.abs(pz)>WORLD_LIMIT) return true; }
+    if(groundTopAt(px,pz,by)-by>.5||groundTopAt(px,pz,by)<by-1.4) return true;       // too steep a climb, or a drop into the river
+    if(!TERR.inBounds(px,pz)) return true; }
   return false;
 }
 function carCrash(p,speed){
@@ -4720,7 +4902,7 @@ function pickTrafficSpot(){        // lane-accurate: street 1 lane/direction, av
     const lanes=L.level===3?3:L.level===2?2:1, li=Math.floor(Math.random()*lanes*2), sg=li<lanes?1:-1, off=sg*((li%lanes)+.5)*(L.a/lanes);
     const along=o+(Math.random()<.5?-1:1)*(60+Math.random()*70);
     let x,z,yaw; if(axisZ){ x=L.pos+off; z=along; yaw=sg>0?0:Math.PI; } else { z=L.pos+off; x=along; yaw=sg>0?Math.PI/2:-Math.PI/2; }
-    if(Math.abs(x)>WORLD_LIMIT-8||Math.abs(z)>WORLD_LIMIT-8) continue;
+    if(!TERR.roadZone(x,z)) continue;
     if(props.some(q=>q.veh&&Math.hypot(q.mesh.position.x-x,q.mesh.position.z-z)<16)) continue;
     if(blockedAt(x,z,GY)) continue;
     return {x,z,yaw};
@@ -4981,8 +5163,8 @@ function updatePlayerOnFoot(dt){
     if(player.flying){
       // Flying: no wall-height restriction, freely traverse.
       const fy=player.pos.y-1;
-      if(!blockedAt(nx,player.pos.z,fy)) player.pos.x = Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, nx));
-      if(!blockedAt(player.pos.x,nz,fy)) player.pos.z = Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, nz));
+      if(!blockedAt(nx,player.pos.z,fy)&&TERR.inBounds(nx,player.pos.z)) player.pos.x = nx;
+      if(!blockedAt(player.pos.x,nz,fy)&&TERR.inBounds(player.pos.x,nz)) player.pos.z = nz;
     } else {
       // simple wall collision: block axis if destination column is much higher than current
       const curTop = groundTopAt(player.pos.x, player.pos.z);
@@ -4990,9 +5172,9 @@ function updatePlayerOnFoot(dt){
       const topZ = groundTopAt(player.pos.x, nz);
       const fyM = player.pos.y-1;
       const bX = blockedAt(nx,player.pos.z,fyM);
-      if(topX - curTop <= 1.05 && !bX) player.pos.x = Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, nx));
+      if(topX - curTop <= 1.05 && !bX && TERR.inBounds(nx,player.pos.z)) player.pos.x = nx;
       const bZ = blockedAt(player.pos.x,nz,fyM);
-      if(topZ - curTop <= 1.05 && !bZ) player.pos.z = Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, nz));
+      if(topZ - curTop <= 1.05 && !bZ && TERR.inBounds(player.pos.x,nz)) player.pos.z = nz;
       // Mantle: jump into a ledge that is within arm's reach and haul up onto it (garage roofs, eaves, crates, shop roofs).
       if((bX||bZ) && !player.onGround && player.vel.y<4){
         const lt = ledgeAt(bX?nx:player.pos.x, bZ?nz:player.pos.z, fyM);
@@ -5168,6 +5350,8 @@ function updateMinimap(dt){
     // view cone
     c.fillStyle='rgba(57,255,138,.14)'; c.beginPath(); c.moveTo(cx,cy); c.arc(cx,cy,RR,-Math.PI/2-.55,-Math.PI/2+.55); c.closePath(); c.fill();
     const rx=Math.cos(y), rz=-Math.sin(y), fx=-Math.sin(y), fz=-Math.cos(y), px=player.pos.x, pz=player.pos.z;
+    for(let j=0;j<19;j++) for(let i=0;i<19;i++){ const mx=i*6.4+3.2, my=j*6.4+3.2, ex=(mx-cx)/k, ey=(my-cy)/k, wx=px+rx*ex+fx*(-ey), wz=pz+rz*ex+fz*(-ey), hh=TERR.h(wx,wz);
+      if(hh<-.9){ c.fillStyle='#0b3558'; c.fillRect(mx-3.3,my-3.3,6.6,6.6); } else if(hh>1.2){ const q=Math.min(1,hh/160); c.fillStyle='rgb('+(26+q*120|0)+','+(52+q*70|0)+','+(30+q*90|0)+')'; c.fillRect(mx-3.3,my-3.3,6.6,6.6); } }
     { const toM=(wx,wz)=>{ const dx=wx-px, dz=wz-pz; return [cx+(dx*rx+dz*rz)*k, cy-(dx*fx+dz*fz)*k]; };   // analytic road lattice (street / avenue / boulevard)
       const n0=Math.floor((px-RANGE-LINE_OFF)/PITCH), n1=Math.ceil((px+RANGE-LINE_OFF)/PITCH), m0=Math.floor((pz-RANGE-LINE_OFF)/PITCH), m1=Math.ceil((pz+RANGE-LINE_OFF)/PITCH);
       c.lineCap='butt'; for(let pass=0;pass<2;pass++){
@@ -5246,7 +5430,9 @@ function loop(){
   const wdt = dt*timeScale;
   updateChunkStreaming(player.pos.x, player.pos.z, dt);
   updateMetropolis(player.pos.x, player.pos.z, dt);
-  water.position.x = player.pos.x; water.position.z = player.pos.z;
+  if(!TERR.prefetch(player.pos.x,player.pos.z,500,0)) TERR.prefetch(player.pos.x+velX*3,player.pos.z+velZ*3,900,0);
+  SCN.update(player.pos.x,player.pos.z,dt);
+  water.position.x = player.pos.x; water.position.z = player.pos.z; { const wt=performance.now()*.001; water.material.map.offset.set(player.pos.x/20+wt*.012, -player.pos.z/20+wt*.007); }
   updateDayNight(wdt);
   const _p0=player.pos.clone();
   updateTransform(dt);

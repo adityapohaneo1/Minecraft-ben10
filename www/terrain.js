@@ -10,25 +10,30 @@
 (function(){
 const CELL=12, TN=32, TS=CELL*TN;
 const WATERDH=-1.1;                       // water surface (abs 0.4) relative to the city level (abs 1.5)
-const BX=5500, BZ=3300;                   // playable rectangle (the sea fills what the land does not)
+/* ---- the world is modelled on the supplied map picture (www/mapdata.js): signed-distance grids for land and city, a greenery grid and road polylines ---- */
+const GM=(typeof window!=="undefined"&&window.__MAP)||(typeof globalThis!=="undefined"&&globalThis.__MAP)||null;
+const B64=(()=>{ const t=new Int16Array(128).fill(-1), c="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; for(let i=0;i<64;i++) t[c.charCodeAt(i)]=i; return t; })();
+function u8(b64,Cls){ let n=b64.length, pad=b64.charCodeAt(n-1)===61?(b64.charCodeAt(n-2)===61?2:1):0, len=(n/4)*3-pad, a=new Cls(len), o=0;
+  for(let i=0;i<n;i+=4){ const v=(B64[b64.charCodeAt(i)]<<18)|(B64[b64.charCodeAt(i+1)]<<12)|((B64[b64.charCodeAt(i+2)]&63)<<6)|(B64[b64.charCodeAt(i+3)]&63); for(let k=0;k<3&&o<len;k++){ const c=(v>>(16-8*k))&255; a[o++]=Cls===Int8Array&&c>127?c-256:c; } } return a; }
+const MW=GM?GM.W:2, MH=GM?GM.H:2, MU=GM?GM.U:20.2, MOX=GM?GM.ox:0, MOY=GM?GM.oy:0;
+const MLAND=GM?u8(GM.land,Int8Array):new Int8Array(4), MURB=GM?u8(GM.urb,Int8Array):new Int8Array(4).fill(-100), MBIO=GM?u8(GM.bio,Uint8Array):new Uint8Array(4);
+const BX=MW/2*MU, BZ=MH/2*MU;              // playable rectangle (the sea fills what the land does not)
+function mapS(A,x,z,sc){ let px=x/MU+MW/2-.5, py=z/MU+MH/2-.5; px=px<0?0:px>MW-1.001?MW-1.001:px; py=py<0?0:py>MH-1.001?MH-1.001:py;
+  const ix=px|0, iy=py|0, fx=px-ix, fy=py-iy, o=iy*MW+ix, a=A[o], b=A[o+1], c=A[o+MW], d=A[o+MW+1]; return (a+(b-a)*fx+(c-a)*fy+(a-b-c+d)*fx*fy)/sc; }
+const px2w=(px,py)=>[(px+MOX-MW/2)*MU,(py+MOY-MH/2)*MU];       // picture pixel -> world (the big city centre is the origin)
 function hs(ix,iz,s){ let h=(Math.imul(ix|0,374761393)+Math.imul(iz|0,668265263)+Math.imul(s|0,2147483629))|0; h=Math.imul(h^(h>>>15),2246822519); h=Math.imul(h^(h>>>13),3266489917); return ((h^(h>>>16))>>>0)/4294967296; }
 function vn(x,z,s){ const ix=Math.floor(x), iz=Math.floor(z), fx=x-ix, fz=z-iz, ux=fx*fx*(3-2*fx), uz=fz*fz*(3-2*fz);
   const a=hs(ix,iz,s), b=hs(ix+1,iz,s), c=hs(ix,iz+1,s), d=hs(ix+1,iz+1,s); return a+(b-a)*ux+(c-a)*uz+(a-b-c+d)*ux*uz; }
 function fbm(x,z,s,o){ let a=.5,f=1,t=0,n=0; for(let i=0;i<o;i++){ t+=a*vn(x*f,z*f,s+i*17); n+=a; a*=.5; f*=2.03; } return t/n; }
 const sm=(a,b,x)=>{ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); };
 
-/* ---- landmasses: main island (city), east peninsula (mountains), south-west island (separated by a strait) ---- */
-const BLOBS=[[0,0,3900,2550],[3500,-650,1900,1500],[-3900,1950,1250,850],[-2300,-2300,1500,900]];
+/* ---- land: signed distance to the coast (map pixels -> world units / 3000, so beaches keep their old proportions) + coastline wobble ---- */
 function landField(x,z){
-  let m=-9; for(let i=0;i<BLOBS.length;i++){ const b=BLOBS[i]; const v=1-Math.hypot((x-b[0])/b[2],(z-b[1])/b[3]); if(v>m) m=v; }
-  return m+.16*(fbm(x/760,z/760,3,4)-.5)*2+.05*(vn(x/190,z/190,9)-.5);
+  return mapS(MLAND,x,z,5)*MU/3000+.034*(fbm(x/330,z/330,3,3)-.5)*2+.012*(vn(x/85,z/85,9)-.5);
 }
 
 /* ---- rivers: control points -> smoothed polyline -> bucketed segments ---- */
-const RIVERS=[
-  {name:'BELLWOOD RIVER',w:24,pts:[[3600,-2050],[3000,-1500],[2300,-1000],[1950,-350],[1750,350],[1250,900],[600,1250],[-150,1650],[-650,2150],[-1050,2800],[-1250,3400]]},
-  {name:'HOLLOW CREEK',w:17,pts:[[-3300,-1500],[-2500,-1000],[-1850,-420],[-1550,250],[-1650,900],[-1450,1500],[-1500,2200],[-1650,2800],[-1750,3400]]},
-];
+const RIVERS=[];
 function catmull(p0,p1,p2,p3,t){ const t2=t*t,t3=t2*t; return [0,1].map(k=>.5*((2*p1[k])+(-p0[k]+p2[k])*t+(2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*t2+(-p0[k]+3*p1[k]-3*p2[k]+p3[k])*t3)); }
 const SEGS=[]; const BUCK=new Map(), BS=128;
 (function(){
@@ -48,15 +53,15 @@ function riverQuery(x,z){
 }
 
 const R0=2100, R1=3100;                  // city plateau radius / full hill amplitude radius (distorted by noise)
-function hillR(x,z){ return Math.hypot(x*.92,z*1.12)+520*(fbm(x/1500,z/1500,21,3)-.5); }
-const MASSIFS=[[3550,-900,190,520],[2900,-1900,120,420],[-3800,1900,110,380],[-2400,-2350,130,430],[3900,300,90,350],[-4300,-800,100,500],[600,-2900,80,400]];
-/* spots kept dead flat whatever the hills say: far-out landmarks (farm, gas station) and anything else that must sit on level ground */
-const FLAT=[[2400,0],[-2400,160],[1280,0],[-1280,0]];
+/* hill field: <R0 inside the city (dead flat), rises with distance from the city edge */
+function hillR(x,z){ return R0-mapS(MURB,x,z,5)*MU*2.5+60*(vn(x/260,z/260,21)-.5); }
+const MASSIFS=[[167,160,250,470],[58,78,150,360],[100,232,170,420],[228,68,130,430],[330,30,110,380],[20,200,120,360],[330,255,90,330],[395,282,70,300]].map(m=>{ const w=px2w(m[0],m[1]); return [w[0],w[1],m[2],m[3]]; });
+const FLAT=[];
 function hillH(x,z,HR){
   const u=sm(R0,R1,HR===undefined?hillR(x,z):HR); if(u<=0) return 0;
   let fl=1; for(let i=0;i<FLAT.length;i++){ const d=Math.hypot(x-FLAT[i][0],z-FLAT[i][1]); if(d<260) fl=Math.min(fl,sm(110,260,d)); } if(fl<=0) return 0;
   const n=fbm(x/430,z/430,5,5), r=1-Math.abs(2*fbm(x/700+9,z/700,8,3)-1);
-  let h=u*(12+78*n*n+34*r*r);
+  let h=u*(12+78*n*n+34*r*r)*(1+.9*mapS(MBIO,x,z,255));
   for(let i=0;i<MASSIFS.length;i++){ const m=MASSIFS[i], d=Math.hypot(x-m[0],z-m[1]); if(d<m[3]*3) h+=m[2]*Math.exp(-(d*d)/(2*m[3]*m[3]))*(.82+.36*vn(x/120,z/120,70+i)); }
   return h*fl;
 }
@@ -97,10 +102,10 @@ function prefetch(px,pz,R,ms){ R=R||1500; ms=ms||0; const t0=performance.now(); 
     for(let tx=t0x;tx<=t1x;tx++) for(let tz=t0z;tz<=t1z;tz++){ if(TILES.has(tk(tx,tz))) continue; if(Math.abs(tx*TS)>BX+TS||Math.abs(tz*TS)>BZ+TS) continue; const d=Math.hypot((tx+.5)*TS-px,(tz+.5)*TS-pz); if(d<bd){ bd=d; best=[tx,tz]; } }
     if(!best) return any; bake(best[0],best[1]); any=true; if(++nb>=1||performance.now()-t0>=ms) return true; } }
 /* circular exclusion zones (scenery plazas): no lots, no roads, no voxel ground */
-const EXCL=[[1839,111,175]];
+const EXCL=[];
 function excl(x,z,pad){ for(let i=0;i<EXCL.length;i++){ const e=EXCL[i]; if(Math.hypot(x-e[0],z-e[1])<e[2]+pad) return true; } return false; }
 const LOTC=new Map();
-const API={EXCL,excl,prefetch,cls,CELL,WATERDH,BX,BZ,R0,R1,exact,h,land:landField,riverQuery,hillR,hillH,RIVERS,MASSIFS,BLOBS,SEGS,
+const API={bio:(x,z)=>mapS(MBIO,x,z,255),urb:(x,z)=>mapS(MURB,x,z,5)*MU,ROADS:GM?GM.roads.map(l=>l.map(p=>[(p[0]-MW/2)*MU,(p[1]-MH/2)*MU])):[],px2w,EXCL,excl,prefetch,cls,CELL,WATERDH,BX,BZ,R0,R1,exact,h,land:landField,riverQuery,hillR,hillH,RIVERS,MASSIFS,SEGS,
   inBounds:(x,z)=>x>-BX&&x<BX&&z>-BZ&&z<BZ,
   flatAt:(x,z)=>Math.abs(h(x,z))<.02,
   /* a lot / block of roads may be built when the whole footprint is flat dry plateau */

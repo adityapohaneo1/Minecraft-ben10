@@ -92,7 +92,7 @@
 
   /* ---- Omnitrix info banner (replaces the loose white text): portrait | scrolling message | X ---- */
   #alien-banner,#status-text{display:none !important;}
-  #ib{position:absolute;top:max(8px,env(safe-area-inset-top,8px));left:50%;width:clamp(272px,42vw,440px);height:60px;transform:translate(-50%,-150%);opacity:0;transition:transform .28s cubic-bezier(.2,.9,.3,1.2),opacity .2s;pointer-events:none;z-index:24;
+  #ib{position:absolute;top:max(8px,env(safe-area-inset-top,8px));left:calc(50% + clamp(34px,9vw,120px));width:clamp(272px,42vw,440px);height:60px;transform:translate(-50%,-150%);opacity:0;transition:transform .28s cubic-bezier(.2,.9,.3,1.2),opacity .2s;pointer-events:none;z-index:24;
     clip-path:polygon(16px 0,calc(100% - 16px) 0,100% 50%,calc(100% - 16px) 100%,16px 100%,0 50%);background:linear-gradient(90deg,#39ff8a,#12a355 50%,#39ff8a);}
   #ib.show{transform:translate(-50%,0);opacity:1;}
   #ib .ib-in{position:absolute;inset:3px;clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,14px 100%,0 50%);background:radial-gradient(120% 160% at 50% 0%,#12301f 0%,#08140e 62%,#050c09 100%);display:flex;align-items:center;gap:9px;padding:0 15px 0 17px;}
@@ -490,6 +490,7 @@ window.addEventListener('error',function(e){
 <script src="props.js"></script>
 <script src="terrain_assets.js"></script>
 <script src="world.js"></script>
+<script src="mapdata.js"></script>
 <script src="terrain.js"></script>
 <script src="vfx.js"></script>
 <script src="glbbody.js"></script>
@@ -679,7 +680,7 @@ const DEB=new THREE.BoxGeometry(1,1,1);
    isSolid, addBlockAt, removeBlockAt) keeps its exact old signature so nothing
    downstream (movement, enemies, props, block editing) needs to change.
 ========================================================================= */
-const WORLD = 11264;               // logical world extent in columns per side (~8 km at ~0.73 m/unit). Nothing is held in memory until the player is near it
+const WORLD = 16896;               // logical world extent in columns per side (~8 km at ~0.73 m/unit). Nothing is held in memory until the player is near it
 const HALF = WORLD/2;
 const WORLD_LIMIT = HALF - 1;
 const WATER_LEVEL = 0;
@@ -1447,7 +1448,7 @@ function planLots(px,pz,sf,horizon,q){
   for(let bx=bx0;bx<=bx1;bx++) for(let bz=bz0;bz<=bz1;bz++) for(let li=0;li<4;li++){
     const cx=bx*PITCH+((li&1)?LOT_OFF:-LOT_OFF), cz=bz*PITCH+((li&2)?LOT_OFF:-LOT_OFF);
     if(Math.abs(cx)>WORLD_LIMIT-30||Math.abs(cz)>WORLD_LIMIT-30) continue;
-    if(!TERR.lotOK(cx,cz)&&!WORLDDEF.landmarkAtLot(bx,bz,li)) continue;
+    if(!TERR.lotOK(cx,cz)) continue;
     let best=1e9; for(let k=0;k<samples.length;k++){ const sm=samples[k], d=Math.hypot(cx-sm[0],cz-sm[1]); if(d<=sm[2]) best=Math.min(best,k?d*1.15:d); }
     if(best>=1e9) continue; const key=lotKey(bx,bz,li); want.add(key); if(!lots.has(key)) missing.push([bx,bz,li,best]);
   }
@@ -1609,7 +1610,7 @@ const RS={cx:1e9,cz:1e9,arm:[],cen:[],grass:null};
           if(hc<-.25){ const d=1-Math.min(.5,-hc/14); r=.46*d; g=.42*d; b=.30*d; w=1; }
           else if(cl===1||cl===2){ const k=1-_sm(.3,1.5,hc); if(k>0){ r=.86; g=.78; b=.53; w=k; } }
           if(hc>1.5||(w===0&&sl>.2)){ const n=.5+.5*Math.sin(x*.011+Math.sin(z*.007)*2)*Math.sin(z*.015), fr=.8+.4*n;
-            let hr=.27*fr, hg=.5*fr, hb=.2*fr, hw=.95*_sm(1.5,10,hc); const rk=Math.max(_sm(.36,.62,sl),_sm(120,175,hc)); hr+=(.52-hr)*rk; hg+=(.5-hg)*rk; hb+=(.47-hb)*rk; hw=Math.max(hw,rk);
+            const bi=TERR.bio(x,z); let hr=(.64-.37*bi)*fr, hg=(.47+.05*bi)*fr, hb=(.31-.11*bi)*fr, hw=.95*_sm(1.5,10,hc); const rk=Math.max(_sm(.36,.62,sl),_sm(110,170,hc)); hr+=(.52-hr)*rk; hg+=(.5-hg)*rk; hb+=(.47-hb)*rk; hw=Math.max(hw,rk); const sn=_sm(185,235,hc)*(1-_sm(.5,.85,sl)); if(sn>0){ hr+=(.93-hr)*sn; hg+=(.95-hg)*sn; hb+=(.98-hb)*sn; }
             if(hw>w){ r=hr; g=hg; b=hb; w=hw; } }
           ntc[v*3]=r; ntc[v*3+1]=g; ntc[v*3+2]=b; ntw[v]=w;
         }
@@ -1688,8 +1689,8 @@ function groundTopAt(x,z,fy){
 /* =========================================================================
    DAY / NIGHT CYCLE
 ========================================================================= */
-const DAY_LENGTH = 9999999999999; // seconds per full cycle
-let dayT = 0.5; // start mid-morning
+const DAY_LENGTH = 99999999; // effectively frozen
+let dayT = 0.5; // locked at noon = full daylight
 const skyDay = new THREE.Color(0x8fc7f2), skyNight = new THREE.Color(0x0a1020);
 const fogDay = new THREE.Color(0x8fc7f2), fogNight = new THREE.Color(0x0a1020);
 function updateDayNight(dt){
@@ -3861,21 +3862,24 @@ function seedExplode(pos,dmg){
 }
 
 /* ---- 3. VINE WEB: vines grow out of the feet, wrap the target, hold it for exactly 5 s ---- */
-const WEB={on:false,en:null,t:0,hold:0,tubes:[],helix:[],pose:0,wrapT:0};
+const WEB={on:false,en:null,veh:false,t:0,hold:0,tubes:[],helix:[],pose:0,wrapT:0};
 const WEB_HOLD=5;
-function webClear(){ if(WEB.en){ WEB.en.webbed=false; } WEB.tubes.forEach(killMesh); WEB.helix.forEach(h=>{ scene.remove(h); h.geometry.dispose(); }); WEB.tubes=[]; WEB.helix=[]; WEB.on=false; WEB.en=null; WEB.pose=0; }
+function webClear(){ if(WEB.en){ WEB.en.webbed=false; } WEB.veh=false; WEB.tubes.forEach(killMesh); WEB.helix.forEach(h=>{ scene.remove(h); h.geometry.dispose(); }); WEB.tubes=[]; WEB.helix=[]; WEB.on=false; WEB.en=null; WEB.pose=0; }
 function wvCleanup(){ webClear(); swingEnd(true); WS.on=false; WS.f=1; }
-function webPickTarget(){
-  const lt=lockedTarget(); if(lt&&lt.alive&&!lt.npc&&!lt.webbed&&lt.mesh.position.distanceTo(player.pos)<30) return lt;
+function webAlive(t,veh){ return veh?(props.indexOf(t)>=0&&!t.wreck&&!t.driver&&t!==carried):(t.alive&&enemies.indexOf(t)>=0); }
+function webPickTarget(){                         // anything with a body: gang, civilians, enemies, cars (locked target first, otherwise the best one in front)
+  const lt=lockedTarget(); if(lt&&lt.alive&&!lt.webbed&&lt.mesh&&lt.mesh.position.distanceTo(player.pos)<32) return {t:lt,veh:false};
   const o=player.pos.clone(), d=lookDir(); let best=null,bs=1e9;
-  for(const en of enemies){ if(!en.alive||en.npc||en.webbed) continue; const v=en.mesh.position.clone().sub(o), dist=v.length(); if(dist>30||dist<1.2) continue;
-    const ang=d.angleTo(v.normalize()); if(ang>.75) continue; const sc=ang*18+dist*.3; if(sc<bs){ bs=sc; best=en; } }
+  for(const en of enemies){ if(!en.alive||en.webbed||en.state==='dead') continue; const v=en.mesh.position.clone().sub(o), dist=v.length(); if(dist>30||dist<1.2) continue;
+    const ang=d.angleTo(v.normalize()); if(ang>.8) continue; const sc=ang*18+dist*.3; if(sc<bs){ bs=sc; best={t:en,veh:false}; } }
+  for(const pr of props){ if(!pr.veh||pr.webbed||pr.wreck||pr.driver||pr===carried||pr.state!=='rest') continue; const v=pr.mesh.position.clone().sub(o), dist=v.length(); if(dist>32||dist<2.5) continue;
+    const ang=d.angleTo(v.normalize()); if(ang>.8) continue; const sc=ang*18+dist*.3+1.5; if(sc<bs){ bs=sc; best={t:pr,veh:true}; } }
   return best;
 }
 function wvWeb(){
   if(WEB.on){ statusText('ALREADY WEBBING'); return false; }
-  const tgt=webPickTarget(); if(!tgt){ statusText('NO TARGET'); return false; }
-  WEB.on=true; WEB.en=tgt; WEB.t=0; WEB.hold=0; WEB.pose=.95; WEB.wrapT=0;
+  const pk=webPickTarget(); if(!pk){ statusText('NO TARGET'); return false; }
+  WEB.on=true; WEB.en=pk.t; WEB.veh=pk.veh; WEB.t=0; WEB.hold=0; WEB.pose=.95; WEB.wrapT=0;
   for(let i=0;i<4;i++) WEB.tubes.push(tubeMesh(i%2?VINE_MAT2:VINE_MAT));
   statusText('VINE WEB'); return true;
 }
@@ -3891,22 +3895,22 @@ function updateWeb(dt){
   if(WEB.pose>0) WEB.pose-=dt;
   if(!WEB.on) return;
   const en=WEB.en;
-  if(!player.alive||player.form.id!=='wildvine'||!en||!en.alive||enemies.indexOf(en)<0){ webClear(); return; }   // target destroyed/removed or we transformed: release cleanly
-  WEB.t+=dt; const tp=en.mesh.position;
+  if(!player.alive||player.form.id!=='wildvine'||!en||!webAlive(en,WEB.veh)){ webClear(); return; }   // target destroyed/removed or we transformed: release cleanly
+  WEB.t+=dt; const tp=en.mesh.position, SC=WEB.veh?2.6:1, RR=.25*SC;
   const GROW=.7;
   if(WEB.t<GROW){                                       // vines race along the ground from the feet to the target
     const g=_sm(WEB.t/GROW);
-    for(let i=0;i<4;i++){ const f=webFoot(i,new THREE.Vector3()), pts=[], tg=new THREE.Vector3(tp.x+(i%2?.25:-.25),groundTopAt(tp.x,tp.z,tp.y)+.15,tp.z+(i<2?.25:-.25));
+    for(let i=0;i<4;i++){ const f=webFoot(i,new THREE.Vector3()), pts=[], tg=new THREE.Vector3(tp.x+(i%2?RR:-RR),groundTopAt(tp.x,tp.z,tp.y)+.15,tp.z+(i<2?RR:-RR));
       const dir=tg.clone().sub(f), perp=new THREE.Vector3(-dir.z,0,dir.x).normalize();
       for(let k=0;k<=12;k++){ const t=k/12*g, p=f.clone().lerp(tg,t); p.addScaledVector(perp,Math.sin(t*9+i*1.7+WEB.t*12)*.35*(1-t)); p.y=Math.max(p.y,groundTopAt(p.x,p.z,p.y)+.12)+Math.sin(t*6+i)*.1; pts.push(p); }
       if(g<.02){ pts.push(pts[0].clone().add(new THREE.Vector3(0,.05,0))); } setTube(WEB.tubes[i],pts,.1,16); }
   } else {
-    if(!en.webbed){ en.webbed=true; WEB.hold=WEB_HOLD; webMakeHelix(en); VFX.sparks(tp.clone(),6,4,0x8bd24a,.25,.4); }
+    if(!en.webbed){ en.webbed=true; WEB.hold=WEB_HOLD; webMakeHelix(en); if(WEB.veh){ WEB.helix.forEach(h=>h.scale.setScalar(SC)); } VFX.sparks(tp.clone(),6,4,0x8bd24a,.25,.4); }
     WEB.hold-=dt;                                        // exactly 5 s of restraint
     WEB.wrapT=Math.min(1,WEB.wrapT+dt/.45);
     const fs=_sm(WEB.wrapT);
-    WEB.helix.forEach(h=>{ h.position.set(tp.x,tp.y+.1,tp.z); h.geometry.setDrawRange(0,Math.floor(h._n*fs/3)*3); });
-    for(let i=0;i<4;i++){ const f=webFoot(i,new THREE.Vector3()), pts=[], tg=new THREE.Vector3(tp.x+(i%2?.25:-.25),groundTopAt(tp.x,tp.z,tp.y)+.15,tp.z+(i<2?.25:-.25));
+    WEB.helix.forEach(h=>{ h.position.set(tp.x,tp.y+(WEB.veh?-.4:.1),tp.z); h.geometry.setDrawRange(0,Math.floor(h._n*fs/3)*3); });
+    for(let i=0;i<4;i++){ const f=webFoot(i,new THREE.Vector3()), pts=[], tg=new THREE.Vector3(tp.x+(i%2?RR:-RR),groundTopAt(tp.x,tp.z,tp.y)+.15,tp.z+(i<2?RR:-RR));
       const dir=tg.clone().sub(f), perp=new THREE.Vector3(-dir.z,0,dir.x).normalize();
       for(let k=0;k<=12;k++){ const t=k/12, p=f.clone().lerp(tg,t); p.addScaledVector(perp,Math.sin(t*9+i*1.7)*.2*(1-t)); p.y=Math.max(p.y,groundTopAt(p.x,p.z,p.y)+.12)+Math.sin(t*6+i)*.08; pts.push(p); }
       setTube(WEB.tubes[i],pts,.1,16); }
@@ -3915,7 +3919,7 @@ function updateWeb(dt){
 }
 
 /* ---- 4. ARM-TENTACLE SWING: hold JUMP -> an arm tentacle grabs an anchor and he swings on a rope-length constraint ---- */
-const SW={on:false,arm:0,next:0,ph:0,grow:0,anchor:new THREE.Vector3(),L:6,t:0,cd:0,held:0,airT:0,tube:null,cap:null,bulb:null,vx:0,vz:0,relT:0,rx:0,rz:0,retr:0,pp:new THREE.Vector3(),pv:new THREE.Vector3(),k:0};
+const SW={on:false,arm:0,next:0,ph:0,grow:0,anchor:new THREE.Vector3(),L:6,t:0,cd:0,held:0,airT:0,tube:null,cap:null,bulb:null,vx:0,vz:0,relT:0,rx:0,rz:0,retr:0,pp:new THREE.Vector3(),pv:new THREE.Vector3(),k:0,kx:0,kz:-1};
 function swingHeld(){ return !!(player.jumpHeld||keys['Space']); }
 function swingFindAnchor(){
   const o=player.pos.clone(); o.y+=.6; let best=null,bs=1e9;
@@ -3926,13 +3930,22 @@ function swingFindAnchor(){
         if(h>=3.5&&hz>=2.5){ const sc=Math.abs(t-15)+Math.abs(pa-.85)*6+Math.abs(dy)*3; if(sc<bs){ bs=sc; best=q.clone(); } } break; } } }
   return best;
 }
+const _sk=new THREE.Vector3();
+function swingSkyAnchor(){                         // a point up and ahead (along travel, else facing): the tentacle just reaches into the sky
+  const vx=player.leap&&player.leapActive?player.leap.x:(player.pos.x-SW.pp.x)/Math.max(.016,.016), vz=player.leap&&player.leapActive?player.leap.z:0;
+  let fx=-Math.sin(player.yaw), fz=-Math.cos(player.yaw); const hs=Math.hypot(player.vel.x||0,player.vel.z||0);
+  if(player.leap&&player.leapActive&&Math.hypot(player.leap.x,player.leap.z)>3){ const l=Math.hypot(player.leap.x,player.leap.z); fx=player.leap.x/l; fz=player.leap.z/l; }
+  const alt=player.pos.y-groundTopAt(player.pos.x,player.pos.z,player.pos.y), H=9, V=Math.max(8,Math.min(22,15+Math.max(0,-player.vel.y)*.35-Math.max(0,alt-12)*.9));   // anchor drops as he gets high, so he swings along instead of climbing forever
+  return _sk.set(player.pos.x+fx*H,player.pos.y+V,player.pos.z+fz*H);
+}
 function swingTry(){
-  const a=swingFindAnchor(); if(!a){ SW.cd=.6; statusText('NO ANCHOR IN REACH'); return false; }
+  const a=swingSkyAnchor();
   SW.on=true; SW.arm=SW.next; SW.next=1-SW.next; SW.anchor.copy(a); SW.ph=0; SW.grow=0; SW.t=0; SW.relT=0; SW.retr=0;
+  { const fx=a.x-player.pos.x, fz=a.z-player.pos.z, l=Math.hypot(fx,fz)||1; SW.kx=fx/l; SW.kz=fz/l; }   // direction of the swing: used to kick him off the ground
   if(!SW.tube){ SW.tube=tubeMesh(VINE_MAT); SW.cap=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),VINE_MAT2); SW.bulb=new THREE.Mesh(new THREE.SphereGeometry(.14,8,6),VINE_MAT2); scene.add(SW.cap,SW.bulb); }
   SW.tube.visible=SW.cap.visible=SW.bulb.visible=true; return true;
 }
-function swingEnd(hard){
+function swingEnd(hard){ SW.chain=false;
   if(SW.on&&!hard){ SW.rx=SW.vx; SW.rz=SW.vz; SW.relT=1.1; SW.ph=2; SW.retr=0; }   // keep momentum on release, tentacle snaps back
   SW.on=false;
   if(hard||!SW.tube){ if(SW.tube){ SW.tube.visible=SW.cap.visible=SW.bulb.visible=false; } SW.ph=0; SW.relT=0; }
@@ -3942,7 +3955,7 @@ function swingPre(dt){                                   // runs before movement
   const air=!player.onGround&&!player.flying&&!player.swimming&&!player.onLadder;
   const held=swingHeld(); SW.held=held?SW.held+dt:0; SW.airT=air?SW.airT+dt:0; SW.cd=Math.max(0,SW.cd-dt);
   if(!SW.on&&air&&held&&SW.held>.14&&SW.airT>.05&&SW.cd<=0&&player.alive&&!(player.wvJumpT>0)){ swingTry(); SW.cd=.35; }
-  if(SW.on&&SW.ph===1){
+  if(SW.on&&(SW.ph===1||(SW.ph===0&&SW.chain))){
     player.leap=player.leap||{x:0,z:0}; player.leapActive=true; player.leap.x=SW.vx; player.leap.z=SW.vz;
   } else if(SW.relT>0&&air){
     player.leap=player.leap||{x:0,z:0}; player.leapActive=true; const k=Math.max(0,1-.35*dt); SW.rx*=k; SW.rz*=k; player.leap.x=SW.rx; player.leap.z=SW.rz; SW.relT-=dt;
@@ -3960,7 +3973,14 @@ function swingPost(dt){                                  // runs after movement:
       const vn=v.dot(n); if(vn>0) v.addScaledVector(n,-vn); }
     v.multiplyScalar(Math.max(0,1-.04*dt));
     SW.vx=v.x; SW.vz=v.z; player.vel.y=v.y;
-    if((SW.t>.3&&player.onGround)||!swingHeld()||SW.t>6||player.swimming) swingEnd(false);
+    const held=swingHeld(), behind=((p.x-a.x)*SW.kx+(p.z-a.z)*SW.kz)>1.5;
+    if(held&&!player.swimming&&player.alive&&(behind||SW.t>1.4||(SW.t>.25&&player.onGround))){   // Spider-Man chain: keep holding jump and he lets go and fires the other arm ahead
+      const hs=Math.hypot(SW.vx,SW.vz); if(hs<9&&hs>0.01){ SW.vx*=9/hs; SW.vz*=9/hs; } else if(hs<=.01){ SW.vx=SW.kx*9; SW.vz=SW.kz*9; }
+      { const alt=p.y-groundTopAt(p.x,p.z,p.y); if(alt<9&&(player.onGround||player.vel.y<2)) player.vel.y=Math.max(player.vel.y,8); else if(alt>14&&player.vel.y>0) player.vel.y*=.4; }
+      player.onGround=false; player.leap=player.leap||{x:0,z:0}; player.leapActive=true; player.leap.x=SW.vx; player.leap.z=SW.vz;
+      swingTry(); SW.chain=true; return;
+    }
+    if(!held||SW.t>6||player.swimming) swingEnd(false);
   } else if(SW.on&&SW.ph===0){                          // tentacle is still travelling: normal movement; remember how fast we were going
     SW.t+=dt; SW.vx=player.leap&&player.leapActive?player.leap.x:(player.pos.x-SW.pp.x)/Math.max(dt,.001); SW.vz=(player.pos.z-SW.pp.z)/Math.max(dt,.001);
   }
@@ -3970,8 +3990,9 @@ function updateSwing(dt){
   if(!SW.tube) return;
   if(SW.on&&SW.ph===0){                                  // grow toward the anchor
     SW.grow=Math.min(1,SW.grow+dt/.18);
-    if(SW.grow>=1){ SW.ph=1; SW.t=0; const hp=wvHandPos(SW.arm,_wv1); SW.L=Math.max(3,hp.distanceTo(SW.anchor));
+    if(SW.grow>=1){ SW.ph=1; SW.t=0; SW.chain=false; const hp=wvHandPos(SW.arm,_wv1); SW.L=Math.max(3,hp.distanceTo(SW.anchor));
       const dx=player.pos.x-SW.pp.x, dz=player.pos.z-SW.pp.z; if(!(SW.vx||SW.vz)){ SW.vx=dx/Math.max(dt,.001); SW.vz=dz/Math.max(dt,.001); }
+      { const al=SW.vx*SW.kx+SW.vz*SW.kz; if(al<10){ SW.vx+=SW.kx*(10-al); SW.vz+=SW.kz*(10-al); } }
       SW.vx=Math.max(-14,Math.min(14,SW.vx)); SW.vz=Math.max(-14,Math.min(14,SW.vz)); statusText(SW.arm?'RIGHT TENTACLE':'LEFT TENTACLE'); }
   }
   if(SW.ph===2){ SW.retr+=dt/.16; if(SW.retr>=1){ SW.ph=0; SW.tube.visible=SW.cap.visible=SW.bulb.visible=false; return; } }
@@ -4006,7 +4027,7 @@ const SCN={ready:false,lastB:[1e9,1e9],lastT:[1e9,1e9],trees:[],mt:[],hero:null,
   const IB={deck:mkI(0x8c8c86,320), rail:mkI(0xb9bfc6,900), pier:mkI(0x6f6f73,300)};
   const _d=new THREE.Object3D();
   const put=(m,x,y,z,sx,sy,sz)=>{ if(m.count>=m.instanceMatrix.count) return; _d.position.set(x,y,z); _d.scale.set(sx,sy,sz); _d.updateMatrix(); m.setMatrixAt(m.count++,_d.matrix); };
-  const HEROS=[{axis:'x',c:760,a:-1700,b:-1580}];            // road spans carried by a bridge model instead of the plain deck
+  const HEROS=[];            // road spans carried by a bridge model instead of the plain deck
   function emit(axis,c,t,a,b){
     for(const h of HEROS) if(h.axis===axis&&Math.abs(h.c-c)<1&&b>h.a&&a<h.b) return;
     a-=3; b+=3; const len=b-a, mid=(a+b)/2, X=axis==='x';
@@ -4038,7 +4059,7 @@ const SCN={ready:false,lastB:[1e9,1e9],lastT:[1e9,1e9],trees:[],mt:[],hero:null,
     for(let ix=Math.floor((px-R)/CS);ix<=Math.floor((px+R)/CS);ix++) for(let iz=Math.floor((pz-R)/CS);iz<=Math.floor((pz+R)/CS);iz++) for(let k=0;k<2;k++){
       const r0=hash(ix,iz,k*7+1), x=(ix+hash(ix,iz,k*7+2))*CS, z=(iz+hash(ix,iz,k*7+3))*CS, d=Math.hypot(x-px,z-pz); if(d>R) continue;
       if(r0>.78) continue; const hc=TERR.h(x,z); if(hc<1.8) continue;
-      const dens=_sm(2,26,hc)*(1-_sm(105,165,hc)); if(hash(ix,iz,k*7+4)>dens) continue;
+      const bi=TERR.bio(x,z), dens=_sm(2,26,hc)*(1-_sm(105,165,hc))*(.06+.94*_sm(.12,.55,bi)); if(hash(ix,iz,k*7+4)>dens) continue;
       if(TERR.slope(x,z)>.5) continue; list.push([d,x,hc,z,.8+hash(ix,iz,k*7+5)*.7,hash(ix,iz,k*7+6)*6.283]); }
     list.sort((a,b)=>a[0]-b[0]); const n=Math.min(list.length,TC.cap);
     for(const im of treeMeshes){ for(let i=0;i<n;i++){ const t=list[i]; _d.position.set(t[1],GY+t[2]-.2,t[3]); _d.rotation.set(0,t[5],0); _d.scale.setScalar(t[4]); _d.updateMatrix(); im.setMatrixAt(i,_d.matrix); } im.count=n; im.instanceMatrix.needsUpdate=true; }
@@ -4084,12 +4105,65 @@ const SCN={ready:false,lastB:[1e9,1e9],lastT:[1e9,1e9],trees:[],mt:[],hero:null,
     try{
       const [tr,mo,mi,he]=await Promise.all([parse(D.tree),parse(D.mountain),parse(D.mindaugas),parse(D.helix)]);
       tr.scene.traverse(o=>{ if(!o.isMesh) return; const mt=lam(o.material,{alphaTest:.45,emissive:new THREE.Color(0x24401a)}); mt.transparent=false; const im=new THREE.InstancedMesh(o.geometry,mt,TC.cap); im.count=0; im.frustumCulled=false; scene.add(im); treeMeshes.push(im); });
-      mountainsBuild(mo); placeHero(mi); placeHelix(he);
+      /* map world: real heightfield mountains, no horizon ring, no hero bridges */
     }catch(e){ console.warn('scenery',e); }
     SCN.ready=true; bridgesRefresh(player.pos.x,player.pos.z); treesRefresh(player.pos.x,player.pos.z);
   };
   SCN.dbg={IB,treeMeshes:()=>treeMeshes,MT,bridgesRefresh,treesRefresh};
 })();
+
+/* =========================================================================
+   MAP ROADS - the curved road network taken from the map picture (www/mapdata.js). Outside the city grid: tarred highways and
+   dirt tracks that follow the land, and bridges (deck + rails + piers) only where a road actually crosses water.
+========================================================================= */
+const RDS=(function(){
+  const hs=(a,b)=>{ let h=(Math.imul(a|0,374761393)+Math.imul(b|0,668265263))|0; h=Math.imul(h^(h>>>15),2246822519); h=Math.imul(h^(h>>>13),3266489917); return ((h^(h>>>16))>>>0)/4294967296; };
+  const R={ready:false,last:[1e9,1e9],lines:[],decks:new Set(),nv:0};
+  const STEP=6, VR=620;
+  function chaikin(P,it){ for(let k=0;k<it;k++){ const o=[P[0]]; for(let i=0;i<P.length-1;i++){ const a=P[i],b=P[i+1]; o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25],[a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]); } o.push(P[P.length-1]); P=o; } return P; }
+  function resample(P){ const out=[P[0].slice()]; let acc=0; for(let i=0;i<P.length-1;i++){ let a=P[i],b=P[i+1], d=Math.hypot(b[0]-a[0],b[1]-a[1]); if(d<1e-6) continue; let t=(STEP-acc)/d; while(t<=1){ out.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]); t+=STEP/d; } acc=(1-(t-STEP/d))*d; if(acc>=STEP) acc=0; } out.push(P[P.length-1].slice()); return out; }
+  (TERR.ROADS||[]).forEach((src,i)=>{ if(src.length<2) return; const sm=resample(chaikin(src,3)); let len=0; for(let k=1;k<sm.length;k++) len+=Math.hypot(sm[k][0]-sm[k-1][0],sm[k][1]-sm[k-1][1]);
+    let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9; for(const p of sm){ x0=Math.min(x0,p[0]); x1=Math.max(x1,p[0]); z0=Math.min(z0,p[1]); z1=Math.max(z1,p[1]); }
+    const tar=len>900||hs(i,7)<.55; R.lines.push({pts:sm,tar,w:tar?(len>900?5.2:4.4):2.9,bb:[x0-30,z0-30,x1+30,z1+30],id:i}); });
+  const CAP=60000, pos=new Float32Array(CAP*3), col=new Float32Array(CAP*3), idx=new Uint32Array(CAP*3/2*3);
+  const nor=new Float32Array(CAP*3); for(let i=0;i<CAP;i++) nor[i*3+1]=1;
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('normal',new THREE.BufferAttribute(nor,3)); geo.setAttribute('position',new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('color',new THREE.BufferAttribute(col,3).setUsage(THREE.DynamicDrawUsage)); geo.setIndex(new THREE.BufferAttribute(idx,1).setUsage(THREE.DynamicDrawUsage));
+  const mat=new THREE.MeshLambertMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+  const mesh=new THREE.Mesh(geo,mat); mesh.frustumCulled=false; mesh.receiveShadow=true; scene.add(mesh);
+  const boxG=new THREE.BoxGeometry(1,1,1), mkI=(c,cap)=>{ const m=new THREE.InstancedMesh(boxG,new THREE.MeshLambertMaterial({color:c}),cap); m.count=0; m.frustumCulled=false; scene.add(m); return m; };
+  const RAIL=mkI(0xb9bfc6,1600), PIER=mkI(0x6f6f73,500), _o=new THREE.Object3D();
+  const put=(m,x,y,z,sx,sy,sz,ry)=>{ if(m.count>=m.instanceMatrix.count) return; _o.position.set(x,y,z); _o.scale.set(sx,sy,sz); _o.rotation.set(0,ry||0,0); _o.updateMatrix(); m.setMatrixAt(m.count++,_o.matrix); };
+  const TAR=[.2,.2,.23], DIRT=[.52,.4,.26], DASH=[.9,.8,.3], EDGE=[.78,.78,.74];
+  let nv=0, ni=0;
+  function quad(ax,ay,az,bx,by,bz,cx,cy,cz,dx,dy,dz,c){ if(nv+4>CAP) return; const o=nv*3; pos.set([ax,ay,az,bx,by,bz,cx,cy,cz,dx,dy,dz],o); for(let k=0;k<4;k++){ col[o+k*3]=c[0]; col[o+k*3+1]=c[1]; col[o+k*3+2]=c[2]; } idx.set([nv,nv+1,nv+2,nv+2,nv+1,nv+3],ni); ni+=6; nv+=4; }
+  const hAt=(x,z)=>TERR.h(x,z);
+  R.update=function(px,pz,force){
+    if(!R.ready&&!force) return; if(!force&&Math.hypot(px-R.last[0],pz-R.last[1])<90) return; R.last=[px,pz]; nv=0; ni=0; RAIL.count=0; PIER.count=0;
+    for(const L of R.lines){ const b=L.bb; if(px<b[0]-VR||px>b[2]+VR||pz<b[1]-VR||pz>b[3]+VR) continue; const P=L.pts, n=P.length;
+      // heights + water runs (only points near the player)
+      const near=new Uint8Array(n), hh=new Float32Array(n), wet=new Uint8Array(n);
+      for(let i=0;i<n;i++){ if(Math.hypot(P[i][0]-px,P[i][1]-pz)<VR){ near[i]=1; } }
+      for(let i=0;i<n;i++){ if(!near[i]&&!(i>0&&near[i-1])&&!(i<n-1&&near[i+1])) continue; hh[i]=hAt(P[i][0],P[i][1]); wet[i]=hh[i]<-1.0?1:0; }
+      const yy=new Float32Array(n); let i=0;
+      while(i<n){ if(!(near[i]||(i>0&&near[i-1])||(i<n-1&&near[i+1]))){ i++; continue; }
+        if(!wet[i]){ yy[i]=GY+hh[i]+.24; i++; continue; }
+        let j=i; while(j<n&&wet[j]) j++; const a=Math.max(0,i-1), b2=Math.min(n-1,j), ha=hh[a], hb=hh[b2]; const deck=GY+Math.max(0,Math.max(ha,hb))+.5;
+        for(let k=i;k<j;k++) yy[k]=deck; if(a<i) yy[a]=GY+ha+.24; if(b2>=j&&b2<n) yy[b2]=GY+hb+.24;
+        const key=L.id+':'+i; if(!R.decks.has(key)){ R.decks.add(key); const pts=P.slice(a,b2+1); DECKS.push({pts,hw:L.w+.3,y:deck}); }
+        for(let k=i;k<j;k++){ const p=P[k], q=P[Math.min(n-1,k+1)], r=P[Math.max(0,k-1)], tx=q[0]-r[0], tz=q[1]-r[1], tl=Math.hypot(tx,tz)||1, nx=-tz/tl, nz=tx/tl, ry=Math.atan2(tx,tz);
+          if(k%2===0){ put(RAIL,p[0]+nx*(L.w+.1),deck+.6,p[1]+nz*(L.w+.1),.35,1.1,STEP*2.05,ry); put(RAIL,p[0]-nx*(L.w+.1),deck+.6,p[1]-nz*(L.w+.1),.35,1.1,STEP*2.05,ry); }
+          if(k%5===2){ const bed=GY+hh[k], top=deck-.5, ph=Math.max(1,top-bed+.5); put(PIER,p[0],top-ph/2,p[1],L.w*.7,ph,2.2,ry); } }
+        i=j; }
+      for(let k=0;k<n-1;k++){ if(!(near[k]||near[k+1])) continue; const a=P[k], b=P[k+1], tx=b[0]-a[0], tz=b[1]-a[1], tl=Math.hypot(tx,tz)||1, nx=-tz/tl*L.w, nz=tx/tl*L.w, y0=yy[k], y1=yy[k+1]; if(!y0||!y1) continue;
+        const c=L.tar?TAR:DIRT; quad(a[0]-nx,y0,a[1]-nz, a[0]+nx,y0,a[1]+nz, b[0]-nx,y1,b[1]-nz, b[0]+nx,y1,b[1]+nz, c);
+        if(L.tar&&(k&1)){ const mx=nx*.045, mz=nz*.045; quad(a[0]-mx,y0+.04,a[1]-mz, a[0]+mx,y0+.04,a[1]+mz, b[0]-mx,y1+.04,b[1]-mz, b[0]+mx,y1+.04,b[1]+mz, DASH); }
+        if(L.tar){ const ex=nx*.92, ez=nz*.92, wx=nx*.06, wz=nz*.06; quad(a[0]-ex-wx,y0+.03,a[1]-ez-wz, a[0]-ex+wx,y0+.03,a[1]-ez+wz, b[0]-ex-wx,y1+.03,b[1]-ez-wz, b[0]-ex+wx,y1+.03,b[1]-ez+wz, EDGE); quad(a[0]+ex-wx,y0+.03,a[1]+ez-wz, a[0]+ex+wx,y0+.03,a[1]+ez+wz, b[0]+ex-wx,y1+.03,b[1]+ez-wz, b[0]+ex+wx,y1+.03,b[1]+ez+wz, EDGE); } }
+    }
+    geo.setDrawRange(0,ni); for(const k of ['position','color']) geo.attributes[k].needsUpdate=true; geo.index.needsUpdate=true; RAIL.instanceMatrix.needsUpdate=true; PIER.instanceMatrix.needsUpdate=true; R.nv=nv;
+  };
+  R.ready=true; R.lines.length; return R;
+})();
+
 setTimeout(()=>{ try{ SCN.init(); }catch(e){ console.warn('SCN',e); } },150);
 
 function updateStreams(dt){
@@ -4212,6 +4286,7 @@ function updateNpcs(dt){
   GANGS.forEach(g=>g.respT=Math.max(0,g.respT-dt));
   for(let i=enemies.length-1;i>=0;i--){
     const en=enemies[i]; if(!en.npc) continue;
+    if(en.webbed&&en.state!=='dead') continue;                        // held by Vine Web: frozen in place
     if(en.state==='dead'){
       en.deadT-=dt; en.mesh.rotation.x+=(-1.5-en.mesh.rotation.x)*Math.min(1,dt*8); animateRig(en.parts,dt,{dead:Math.min(1,(4-en.deadT)/.5),grounded:true,ws:.9});
       if(en.deadT<=0){ scene.remove(en.mesh); rigDispose(en.parts); enemies.splice(i,1); if(en.gang){ const k=en.gang.members.indexOf(en); if(k>=0) en.gang.members.splice(k,1); en.gang.respT=25; } }
@@ -4820,7 +4895,7 @@ function moveCar(p,dt){
 }
 function nearestCar(maxD){
   let best=null,bd=maxD;
-  for(const p of props){ if(!p.veh||p.wreck||p.flipped||p.flipT>0||p.driver||p===carried||p.state!=='rest') continue;
+  for(const p of props){ if(!p.veh||p.wreck||p.flipped||p.flipT>0||p.driver||p.webbed||p===carried||p.state!=='rest') continue;
     const d=Math.hypot(p.mesh.position.x-player.pos.x,p.mesh.position.z-player.pos.z);
     if(d<bd && Math.abs(p.mesh.position.y-player.pos.y)<3){ best=p; bd=d; } }
   return best;
@@ -4948,6 +5023,7 @@ function updateVehicles(dt){
   for(const p of list){
     const m=p.mesh.position, dist=Math.hypot(m.x-player.pos.x,m.z-player.pos.z);
     if(p.hitCd>0) p.hitCd-=dt;
+    if(p.webbed){ p.v=0; p.push.set(0,0,0); continue; }               // held by Vine Web
     if(p.flashT>0){ p.flashT-=dt; if(p.flashT<=0){ const b=carBody(p); if(b&&!p.wreck) b.material.emissive.set(0); } }
     if(p.driver||p===carried||p.state!=='rest'){ /* driven by driveTick / held / thrown by updateProps */ if(p.state==='rest'&&!p.driver) {} }
     const active = p.driver || p.traffic || Math.abs(p.v)>.05 || p.push.lengthSq()>.01 || p.flipT>0 || p.burnT>0 || m.y>p.by+CAR_H+.02;
@@ -5431,7 +5507,7 @@ function loop(){
   updateChunkStreaming(player.pos.x, player.pos.z, dt);
   updateMetropolis(player.pos.x, player.pos.z, dt);
   if(!TERR.prefetch(player.pos.x,player.pos.z,500,0)) TERR.prefetch(player.pos.x+velX*3,player.pos.z+velZ*3,900,0);
-  SCN.update(player.pos.x,player.pos.z,dt);
+  SCN.update(player.pos.x,player.pos.z,dt); RDS.update(player.pos.x,player.pos.z);
   water.position.x = player.pos.x; water.position.z = player.pos.z; { const wt=performance.now()*.001; water.material.map.offset.set(player.pos.x/20+wt*.012, -player.pos.z/20+wt*.007); }
   updateDayNight(wdt);
   const _p0=player.pos.clone();

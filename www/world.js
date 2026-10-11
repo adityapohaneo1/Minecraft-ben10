@@ -55,7 +55,7 @@ function districtTypeOfSector(sx,sz){
   const d=Math.hypot(sx,sz); let h=hash3(sx,sz,77)%100; if(_lmSectors().has(sx+','+sz)&&h<8) h=50;   // sectors holding a landmark are never parkland
   if(d<=0.8) return 'downtown';
   if(d<=1.5) return sz<0&&Math.abs(sz)>=Math.abs(sx)?'civic':'commercial';
-  if(d>3.7) return h<20?'parkland':h<34?'village':'rural';
+  if(d>3.7) return h<14?'parkland':h<34?'industrial':h<62?'suburb':h<80?'commercial':'oldtown';
   if(h<8) return 'parkland';
   if(Math.abs(sz)>=Math.abs(sx)) return sz<0?(h<45&&d>2.4?'wealthy':'suburb'):'harbor';
   return sx>0?'industrial':'oldtown';

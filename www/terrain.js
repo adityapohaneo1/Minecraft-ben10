@@ -54,7 +54,7 @@ function riverQuery(x,z){
 
 const R0=0, R1=1000;                  // city plateau radius / full hill amplitude radius (distorted by noise)
 /* hill field: <R0 inside the city (dead flat), rises with distance from the city edge */
-function hillR(x,z){ return (330-mapS(MEDGE,x,z,1)*MU)/270*1000+520*(fbm(x/170,z/170,21,3)-.5); }   // hills only in a band along the coast; the whole interior is flat
+function hillR(x,z){ return -1e6; }   // hills only in a band along the coast; the whole interior is flat
 const MASSIFS=[[167,160,250,470],[58,78,150,360],[100,232,170,420],[228,68,130,430],[330,30,110,380],[20,200,120,360],[330,255,90,330],[395,282,70,300]].map(m=>{ const w=px2w(m[0],m[1]); return [w[0],w[1],m[2],m[3]]; }).slice(0,0);
 const FLAT=[];
 function hillH(x,z,HR){
@@ -112,7 +112,7 @@ const RL=[], RB=new Map(), RBS=96, RSTEP=8;
   const resample=P=>{ const out=[P[0].slice()]; let acc=0; for(let i=0;i<P.length-1;i++){ const a=P[i],b=P[i+1], d=Math.hypot(b[0]-a[0],b[1]-a[1]); if(d<1e-6) continue; let t=(RSTEP-acc)/d; while(t<=1){ out.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]); t+=RSTEP/d; } acc=(1-(t-RSTEP/d))*d; if(acc>=RSTEP) acc=0; } out.push(P[P.length-1].slice()); return out; };
   GM.roads.forEach((r,i)=>{ const th=r[0], src=r[1].map(p=>[(p[0]-MW/2)*MU,(p[1]-MH/2)*MU]); if(src.length<2) return;
     const pts=resample(chaikin(src,2)); let len=0; for(let k=1;k<pts.length;k++) len+=Math.hypot(pts[k][0]-pts[k-1][0],pts[k][1]-pts[k-1][1]);
-    const tw=th*MU, w=Math.max(3.6,Math.min(9,tw*.26)), major=w>=6.4; const L={pts,w,major,len,id:RL.length,tar:true};
+    const tw=th*MU, w=r[2]||Math.max(3.6,Math.min(9,tw*.26)), major=w>=6.4; const L={pts,w,major,len,id:RL.length,tar:true};
     L.mx=pts[pts.length>>1][0]; L.mz=pts[pts.length>>1][1];
     for(let k=0;k<pts.length-1;k++){ const a=pts[k], b=pts[k+1], x0=Math.floor((Math.min(a[0],b[0])-w-40)/RBS), x1=Math.floor((Math.max(a[0],b[0])+w+40)/RBS), z0=Math.floor((Math.min(a[1],b[1])-w-40)/RBS), z1=Math.floor((Math.max(a[1],b[1])+w+40)/RBS), sg={L,k,ax:a[0],az:a[1],bx:b[0],bz:b[1]};
       for(let X=x0;X<=x1;X++) for(let Z=z0;Z<=z1;Z++){ const key=X+','+Z; let l=RB.get(key); if(!l) RB.set(key,l=[]); l.push(sg); } }
@@ -123,12 +123,12 @@ function roadQuery(x,z,ex){ const l=RB.get(Math.floor(x/RBS)+','+Math.floor(z/RB
   for(let i=0;i<l.length;i++){ const s=l[i]; if(ex&&s.L===ex) continue; const dx=s.bx-s.ax, dz=s.bz-s.az, t=Math.max(0,Math.min(1,((x-s.ax)*dx+(z-s.az)*dz)/(dx*dx+dz*dz))), d=Math.hypot(x-s.ax-dx*t,z-s.az-dz*t)-s.L.w; if(d<bd){ bd=d; bs=s; } }
   return bs?{d:bd,L:bs.L,k:bs.k}:null; }
 const API={bio:(x,z)=>Math.max(mapS(MBIO,x,z,255),.55*sm(0,500,hillR(x,z))),urb:(x,z)=>mapS(MURB,x,z,1)*MU,RLINES:RL,roadQuery,roadDist:(x,z)=>{ const q=roadQuery(x,z); return q?q.d:1e9; },px2w,EXCL,excl,prefetch,cls,CELL,WATERDH,BX,BZ,R0,R1,exact,h,land:landField,riverQuery,hillR,hillH,RIVERS,MASSIFS,SEGS,
-  inBounds:(x,z)=>x>-BX&&x<BX&&z>-BZ&&z<BZ,
+  inBounds:(x,z)=>{ const C=typeof window!=='undefined'&&window.__CITY; if(C){ const b=C.bounds; return x>b[0]-3&&x<b[2]+3&&z>b[1]-3&&z<b[3]+3; } return x>-BX&&x<BX&&z>-BZ&&z<BZ; },
   flatAt:(x,z)=>Math.abs(h(x,z))<.02,
   /* a lot / block of roads may be built when the whole footprint is flat dry plateau */
   lotOK(cx,cz,r){ r=r||30; const key=cx*131071+cz*7+r; let v=LOTC.get(key); if(v===undefined){ v=API.lotOK0(cx,cz,r); if(LOTC.size>20000) LOTC.clear(); LOTC.set(key,v); } return v; },
   flatOK(cx,cz,r){ const key=-(cx*131071+cz*7+r); let v=LOTC.get(key); if(v===undefined){ v=API.lotOK0(cx,cz,r,true); if(LOTC.size>20000) LOTC.clear(); LOTC.set(key,v); } return v; },
-  lotOK0(cx,cz,r,noRoad){ if(excl(cx,cz,r)) return false; if(!noRoad){ const q=roadQuery(cx,cz); if(q&&q.d<9) return false; if(mapS(MURB,cx,cz,1)*MU<-6) return false; } return Math.abs(h(cx,cz))<.02&&Math.abs(h(cx-r,cz-r))<.02&&Math.abs(h(cx+r,cz-r))<.02&&Math.abs(h(cx-r,cz+r))<.02&&Math.abs(h(cx+r,cz+r))<.02&&Math.abs(h(cx,cz-r))<.02&&Math.abs(h(cx,cz+r))<.02&&Math.abs(h(cx-r,cz))<.02&&Math.abs(h(cx+r,cz))<.02; },
+  lotOK0(cx,cz,r,noRoad){ return false; if(excl(cx,cz,r)) return false; if(!noRoad){ const q=roadQuery(cx,cz); if(q&&q.d<9) return false; if(mapS(MURB,cx,cz,1)*MU<-6) return false; } return Math.abs(h(cx,cz))<.02&&Math.abs(h(cx-r,cz-r))<.02&&Math.abs(h(cx+r,cz-r))<.02&&Math.abs(h(cx-r,cz+r))<.02&&Math.abs(h(cx+r,cz+r))<.02&&Math.abs(h(cx,cz-r))<.02&&Math.abs(h(cx,cz+r))<.02&&Math.abs(h(cx-r,cz))<.02&&Math.abs(h(cx+r,cz))<.02; },
   /* roads continue over rivers (as bridges) but stop at hills and beaches */
   roadZone(x,z){ return false; },
   isRiver(x,z){ const q=riverQuery(x,z); return !!q&&q.d<14; },

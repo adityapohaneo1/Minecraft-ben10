@@ -491,7 +491,11 @@ window.addEventListener('error',function(e){
 <script src="terrain_assets.js"></script>
 <script src="world.js"></script>
 <script src="mapdata.js"></script>
+<script src="citydata.js"></script>
 <script src="terrain.js"></script>
+<script src="citymodel.js"></script>
+<script src="cardata.js"></script>
+<script src="carmodel.js"></script>
 <script src="vfx.js"></script>
 <script src="glbbody.js"></script>
 <script>
@@ -1707,6 +1711,7 @@ function updateDayNight(dt){
   scene.fog.color.copy(_dn2.copy(fogNight).lerp(fogDay, mix).lerp(fogDusk, dusk*.6));
   ambient.color.copy(ambNight).lerp(ambDay, mix);
   ambient.intensity = 0.45 + 0.15*mix;                       // nights stay readable
+  if(window.CITYM) window.CITYM.setNight(Math.max(0,Math.min(1,1-mix*1.4)));
   sun.color.copy(moonCol).lerp(sunWhite, mix).lerp(sunWarm, dusk*.8);
   sun.intensity = 0.4 + 0.55*mix;                        // the 'sun' doubles as a bright moon at night
 }
@@ -1946,7 +1951,7 @@ function animateRig(parts,dt,inp){
       if(parts.leftArm2){ P.s2L.x=.3; P.s2R.x=.3; P.s2L.z=-.6; P.s2R.z=.6; P.e2L=.5; P.e2R=.5; }
     } else if(inp.jr){ // Jetray: wings spread wide and beating, legs trailing, tail streaming
       // straight glide (reference clip): body in one straight line, wings held out flat and still - no flapping
-      P.sL.z=-1.5; P.sR.z=1.5; P.sL.x=0; P.sR.x=0; P.sL.y=0; P.sR.y=0; P.eL=.02; P.eR=.02;
+      { const fl=Math.sin(A.t*(inp.moving?3.2:2.2)); P.sL.z=-1.5-.14*fl; P.sR.z=1.5+.14*fl; } P.sL.x=0; P.sR.x=0; P.sL.y=0; P.sR.y=0; P.eL=.02; P.eR=.02;
       P.tLx=0; P.tRx=0; P.kL=0; P.kR=0; P.fL=.55; P.fR=.55; P.chX=0; P.hdX=inp.moving?.55:0; P.hipsY=0;
     } else { // Superman: arms locked forward over the head, legs streamed behind, slight wobble
       const up=inp.moving?2.85:.55; P.sL.x=up; P.sR.x=up; P.eL=.1; P.eR=.1; P.sL.z=-.08; P.sR.z=.08;
@@ -1964,7 +1969,7 @@ function animateRig(parts,dt,inp){
     P.chX += -.2*mv - .14*q*mv; P.hdX += .14*mv;
     P.chY += -sL*.28*mv; P.hdY += sL*.4*mv; P.hipsRZ += sL*.07*mv;                 // shoulders + flytrap head sway opposite the leading legs
     // video ref: arms held OUT to the sides, elbows bent, fingers spread, only a small counter-sway; no slamming
-    { const rb=A.t*1.9; P.sL.x=.06+Math.sin(rb+.6)*.03-sL*.05*mv; P.sR.x=.06+Math.sin(rb+1.2)*.03-sR*.05*mv; P.sL.z=-.05+sL*.015*mv; P.sR.z=.05+sL*.015*mv; P.sL.y=0; P.sR.y=0; P.eL=.12; P.eR=.12; }   // arms stay at his sides exactly as at rest, only a little sway   // ref: arms hang out-and-down ~40deg, slightly forward, claws drooping, small counter-swing
+    { const rb=A.t*1.9, wk=A.t*2.2; P.sL.x=.1+Math.sin(rb+.6)*.1-sL*.22*mv; P.sR.x=.1+Math.sin(rb+1.9)*.1-sR*.22*mv; P.sL.z=-(.5+Math.sin(rb)*.08+.08*mv*Math.abs(sL)); P.sR.z=.5+Math.sin(rb+1.3)*.08+.08*mv*Math.abs(sR); P.sL.y=Math.sin(wk+.5)*.07*mv; P.sR.y=Math.sin(wk+2.4)*.07*mv; P.eL=.62+Math.sin(rb+.9)*.14+.1*mv*sL; P.eR=.62+Math.sin(rb+2.2)*.14-.1*mv*sR; }   // arms raised a little out from the body, elbows bent, loose tentacle sway like his legs
     P.hipsZ += -.06*q*lung0(ph);
     if(inp.wvWind>0){ const w=_sm(inp.wvWind);                                   // wind-up: all four roots pulled tight under the core, body sinks, shoulder pods flare, head tucks back
       P.hipsY += -.34*w; P.chX += -.3*w; P.hdX += -.35*w; P.tLx=_lerp(P.tLx,.75,w); P.tRx=_lerp(P.tRx,.75,w); P.kL=_lerp(P.kL,1.7,w); P.kR=_lerp(P.kR,1.7,w); P.sL.z += -.55*w; P.sR.z += .55*w; P.sL.x=_lerp(P.sL.x,.3,w); P.sR.x=_lerp(P.sR.x,.3,w); }
@@ -2675,7 +2680,7 @@ const ENVP=(function(){
     p.mesh.rotation.y=RV_POS.yaw; p.yaw=RV_POS.yaw; p.by=GY; p.rv=true; p.hp=240; p.hp=p.hpMax=220; p.hw=1.45; p.hl=3.35; p.colH=3.6; ENVP.rv=p;
   }
   function init(){ const D=window.__PROP_DATA; if(!D||!THREE.GLTFLoader) return Promise.resolve();
-    return (async()=>{ try{ if(D.house) await buildHouse(D); }catch(e){ console.warn('house',e); } try{ if(D.rustbucket) await buildRV(D); }catch(e){ console.warn('rustbucket',e); } delete window.__PROP_DATA; })(); }
+    return (async()=>{ try{ if(false&&D.house) await buildHouse(D); }catch(e){ console.warn('house',e); } try{ if(false&&D.rustbucket) await buildRV(D); }catch(e){ console.warn('rustbucket',e); } delete window.__PROP_DATA; })(); }
   return { init, HOUSE, RV_POS };
 })();
 window.ENVP=ENVP;
@@ -2735,7 +2740,8 @@ function updateCamera(){
   { const fx=-lookDir.x, fy=-lookDir.y, fz=-lookDir.z;
     for(let k=1;k<=10;k++){ const d=back*k/10; if(camSolid(pivot.x+fx*d,pivot.y+fy*d,pivot.z+fz*d)){ safeBack=Math.max(1.6,d-1.2); break; } }
   }   // never inside a building
-  const desired = pivot.clone().addScaledVector(lookDir, -safeBack);
+  camDyn.jr=(camDyn.jr||0)+(((player.flying&&player.form.id==='jetray')?1:0)-(camDyn.jr||0))*Math.min(1,cdt*3);   // Jetray: camera rides above him, looking down at his back and wings
+  const desired = pivot.clone().addScaledVector(lookDir, -safeBack); desired.y+=camDyn.jr*safeBack*.55;
   // feed-forward: move the camera with the player's own displacement so a huge speed can't build up lag distance
   { const dd=Math.hypot(_fdx,_fdz), sv=dd/Math.max(cdt,1e-3);
     const ff=xlr8Cam?Math.min(1,camDyn.pull*2.5):Math.min(1,Math.max(0,(sv-12)/18)); // fast movers (flying, rolling) keep their framing
@@ -2744,7 +2750,7 @@ function updateCamera(){
   camera.position.lerp(desired, (xlr8Cam||player.flying)?0.3:0.18);
   { const sv2=Math.hypot(_fdx,_fdz)/Math.max(cdt,1e-3); // hard cap on how far the camera may trail the player when moving fast
     if(sv2>12 && sv2<400){ const Ld=camera.position.distanceTo(desired), mx=1.4; if(Ld>mx) camera.position.lerp(desired,1-mx/Ld); } }
-  const lookAt = pivot.clone().addScaledVector(lookDir, 8);
+  const lookAt = pivot.clone().addScaledVector(lookDir, 8); lookAt.y-=camDyn.jr*safeBack*.3;
   camera.lookAt(lookAt);
 }
 
@@ -3341,7 +3347,7 @@ const MAX_FOV_BOOST = 30;
 const XLR8_MAX_FOV_BOOST = 4; // XLR8 gets restrained FOV widening so the character stays readable.
 const XLR8_CAM_PULL = 0.4; // At max super-speed, the camera moves back only 10%, not >2x.
 const XLR8_CAM_HEIGHT = 0.25; // Small extra height at speed; preserves a close third-person read.
-let lastFov = BASE_FOV, speedShakeT = 0, xtPrevS = 0, xtDust = 0, XT = null, XS = null, XB = null;
+let lastFov = BASE_FOV, speedShakeT = 0, xtPrevS = 0, xtDust = 0, XT = null, XS = null, XB = null, xbK = 0; const xbF=new THREE.Vector3(), xbR=new THREE.Vector3();
 
 // XLR8 (VFX pack): three thin ribbon trails sampled from his hands + back (path-following), light streaks at top speed, brake dust at the feet.
 function xlrFx(dt,k){
@@ -3359,20 +3365,16 @@ function xlrFx(dt,k){
   }
   if(on&&xtPrevS>.45&&k<.25&&player.onGround) VFX.slide(feet,fw.clone().multiplyScalar(-1),2.2);   // hard stop: dirt + smoke starting exactly at contact, drifting back
   xtPrevS=on?k:0;
-  // Back streak: rigid to his back every frame (never lags), plus a radial edge blur overlay (motion blur)
-  if(!XS){
-    const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const g=cv.getContext('2d'), gr=g.createLinearGradient(0,0,256,0);
-    gr.addColorStop(0,'rgba(255,255,255,0.9)'); gr.addColorStop(.25,'rgba(150,225,255,0.6)'); gr.addColorStop(1,'rgba(60,160,255,0)'); g.fillStyle=gr;
-    g.beginPath(); g.moveTo(0,32); g.lineTo(256,2); g.lineTo(256,62); g.closePath(); g.fill();
-    const tx=new THREE.CanvasTexture(cv), mat=new THREE.MeshBasicMaterial({map:tx,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false});
-    XS=new THREE.Group(); const pg=new THREE.PlaneGeometry(1,1); pg.translate(.5,0,0);
-    const m1=new THREE.Mesh(pg,mat), m2=new THREE.Mesh(pg,mat); m2.rotation.x=Math.PI/2; const m3=m1.clone(); m3.position.y=.5; m3.scale.y=.6; const m4=m1.clone(); m4.position.y=-.45; m4.scale.y=.6;
-    [m1,m2,m3,m4].forEach(m=>{m.frustumCulled=false; XS.add(m);}); XS.visible=false; scene.add(XS);
+  // Speed streaks: the pack's blue line texture stretched from his back straight along the way he came, re-anchored every frame; lingers and shortens after he stops. Edge blur overlay = motion blur.
+  const sv=on&&!player.flying;
+  if(sv&&k>xbK) xbK=k; else xbK=Math.max(0,xbK-dt*1.7);
+  xbF.copy(fw); xbR.copy(rt);
+  if(!XB){
+    const mk=(w,dy,sd)=>VFX.beam('lightstreaks',f=>{ f.set(player.pos.x-xbF.x*.25+xbR.x*sd,player.pos.y+dy,player.pos.z-xbF.z*.25+xbR.z*sd); },t=>{ const L=xbK>.1?.8+8*xbK:.001; t.set(player.pos.x-xbF.x*(.25+L)+xbR.x*sd,player.pos.y+dy,player.pos.z-xbF.z*(.25+L)+xbR.z*sd); },w,{size:1,dur:.5,tint:0xb8ecff,alpha:.75,mask:1});
+    XS=[mk(3,0,0),mk(1.8,.7,.5),mk(1.8,-.5,-.5)];
     XB=document.createElement('div'); XB.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:5;opacity:0;transition:opacity .15s;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);-webkit-mask-image:radial-gradient(circle at 50% 50%,transparent 35%,#000 95%);mask-image:radial-gradient(circle at 50% 50%,transparent 35%,#000 95%)'; document.body.appendChild(XB);
   }
-  const sv=on&&k>.15&&!player.flying;
-  XS.visible=sv; XB.style.opacity=sv?Math.min(1,(k-.15)*1.6).toFixed(2):'0';
-  if(sv){ const L=1.8+9*k; XS.position.set(player.pos.x-fw.x*.3,player.pos.y,player.pos.z-fw.z*.3); XS.rotation.set(0,player.yaw-Math.PI/2,0); XS.scale.set(L,1.0+k*.6,1.0+k*.6); }
+  XB.style.opacity=(sv&&k>.15)?Math.min(1,(k-.15)*1.6).toFixed(2):'0';
 }
 // Per-form VFX: flight exhaust/trails (Heatblast, Jetray, Chromastone), Cannonbolt roll dust, landing/takeoff puffs.
 let AUR=null, ffR=0, FT=null, ffWasGround=true, ffWasFly=false, ffVy=0, ffT=0;
@@ -3419,7 +3421,8 @@ function updateSpeedEffects(dt){
 
 function makeBoulder(x,y,z,s,color,car){
   const g=new THREE.Group(), m=new THREE.MeshLambertMaterial({color});
-  if(car){
+  if(car&&window.CARM&&CARM.n){ const cm=CARM.make(Math.floor(Math.random()*Math.min(2,CARM.n))); g.add(cm); }
+  else if(car){
     const a=new THREE.Mesh(DEB,m), b=new THREE.Mesh(DEB,flat(0x9fd8ee)), w=new THREE.Mesh(DEB,flat(0x111111));
     a.scale.set(1,.42,2.1); a.position.y=-.25; b.scale.set(.85,.36,1); b.position.set(0,.13,-.1); w.scale.set(1.02,.14,1.7); w.position.y=-.45;
     a.castShadow=b.castShadow=true; g.add(a,b,w);
@@ -3973,7 +3976,7 @@ function swingPre(dt){                                   // runs before movement
   if(player.form.id!=='wildvine'){ if(SW.on||SW.ph) swingEnd(true); return; }
   const air=!player.onGround&&!player.flying&&!player.swimming&&!player.onLadder;
   const held=swingHeld(); SW.held=held?SW.held+dt:0; SW.airT=air?SW.airT+dt:0; SW.cd=Math.max(0,SW.cd-dt);
-  if(!SW.on&&air&&held&&SW.held>.14&&SW.airT>.05&&SW.cd<=0&&player.alive&&!(player.wvJumpT>0)){ swingTry(); SW.cd=.35; }
+  if(!held) SW.lock=false; if(!SW.on&&air&&held&&!SW.lock&&SW.held>.14&&SW.airT>.05&&SW.cd<=0&&player.alive&&!(player.wvJumpT>0)){ swingTry(); SW.cd=.35; }
   if(SW.on&&(SW.ph===1||(SW.ph===0&&SW.chain))){
     player.leap=player.leap||{x:0,z:0}; player.leapActive=true; player.leap.x=SW.vx; player.leap.z=SW.vz;
   } else if(SW.relT>0&&air){
@@ -3993,13 +3996,7 @@ function swingPost(dt){                                  // runs after movement:
     v.multiplyScalar(Math.max(0,1-.04*dt));
     SW.vx=v.x; SW.vz=v.z; player.vel.y=v.y;
     const held=swingHeld(), behind=((p.x-a.x)*SW.kx+(p.z-a.z)*SW.kz)>1.5;
-    if(held&&!player.swimming&&player.alive&&(behind||SW.t>1.4||(SW.t>.25&&player.onGround))){   // Spider-Man chain: keep holding jump and he lets go and fires the other arm ahead
-      const hs=Math.hypot(SW.vx,SW.vz); if(hs<9&&hs>0.01){ SW.vx*=9/hs; SW.vz*=9/hs; } else if(hs<=.01){ SW.vx=SW.kx*9; SW.vz=SW.kz*9; }
-      { const alt=p.y-groundTopAt(p.x,p.z,p.y); if(alt<9&&(player.onGround||player.vel.y<2)) player.vel.y=Math.max(player.vel.y,8); else if(alt>14&&player.vel.y>0) player.vel.y*=.4; }
-      player.onGround=false; player.leap=player.leap||{x:0,z:0}; player.leapActive=true; player.leap.x=SW.vx; player.leap.z=SW.vz;
-      swingTry(); SW.chain=true; return;
-    }
-    if(!held||SW.t>6||player.swimming) swingEnd(false);
+    if(!held||SW.t>3.2||player.swimming||(SW.t>.3&&player.onGround)){ if(held) SW.lock=true; swingEnd(false); }   // ONE hold = ONE swing: release and press again for the next
   } else if(SW.on&&SW.ph===0){                          // tentacle is still travelling: normal movement; remember how fast we were going
     SW.t+=dt; SW.vx=player.leap&&player.leapActive?player.leap.x:(player.pos.x-SW.pp.x)/Math.max(dt,.001); SW.vz=(player.pos.z-SW.pp.z)/Math.max(dt,.001);
   }
@@ -4023,7 +4020,7 @@ function wvSwingPose(){ if(!SW.on&&SW.ph!==2) return null;
   return {arm:SW.arm,pitch:Math.max(0,Math.min(1.25,Math.atan2(dy,hz))),k:SW.ph===2?Math.max(0,1-SW.retr):_sm(SW.grow)}; }
 function wvSwingPoseApply(P,parts,w){
   const vs=parts.vStretch||(parts.vStretch=[0,0]), sg=w.arm?1:-1, S=w.arm?P.sR:P.sL, O=w.arm?P.sL:P.sR, k=w.k;
-  S.x=_lerp(S.x,1.71+w.pitch,k); S.y=_lerp(S.y,0,k); S.z=_lerp(S.z,sg*.14,k); P[w.arm?'eR':'eL']=_lerp(P[w.arm?'eR':'eL'],.02,k);
+  S.x=_lerp(S.x,1.71+w.pitch,k); S.y=_lerp(S.y,0,k); S.z=_lerp(S.z,sg*.14,k); { const tt=performance.now()/1000, bend=.16+.26*Math.sin(tt*6.5+(w.arm?1:0))*Math.min(1,SW.t/.5||0); P[w.arm?'eR':'eL']=_lerp(P[w.arm?'eR':'eL'],bend,k); S.z=_lerp(S.z,sg*(.14+.12*Math.sin(tt*4.3)),k); }
   { const sh=wvShoulderPos(w.arm,_wv1), hp=wvHandPos(w.arm,_wv2), D=hp.distanceTo(sh), est=Math.max(.25,D/(1+(SW.vsPrev||0)));   // natural arm length, measured from last frame's skeleton
     SW.est=SW.est?SW.est+(est-SW.est)*.3:est; const want=Math.max(0,SW.anchor.distanceTo(sh)/SW.est-1); vs[w.arm]=Math.max(vs[w.arm],Math.min(80,want*k)); SW.vsPrev=vs[w.arm]; }
   O.x=_lerp(O.x,-.45,k); O.z=_lerp(O.z,-sg*.9,k); P[w.arm?'eL':'eR']=_lerp(P[w.arm?'eL':'eR'],.8,k);
@@ -4180,9 +4177,10 @@ const RDS=(function(){
     }
     geo.setDrawRange(0,ni); for(const k of ['position','color']) geo.attributes[k].needsUpdate=true; geo.index.needsUpdate=true; RAIL.instanceMatrix.needsUpdate=true; PIER.instanceMatrix.needsUpdate=true; R.nv=nv;
   };
-  R.ready=true; return R;
+  R.ready=false; return R;
 })();
 
+if(window.CITYM) window.CITYM.build(scene,GY,gridAdd);
 setTimeout(()=>{ try{ SCN.init(); }catch(e){ console.warn('SCN',e); } },150);
 
 function updateStreams(dt){

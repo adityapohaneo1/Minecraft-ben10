@@ -701,7 +701,7 @@ const PITCH=80, LINE_OFF=40;                       // road centre-lines sit at 4
 const ROAD_LV=[null,{a:4,t:6},{a:9,t:12},{a:13,t:16}];   // level -> asphalt half-width, total half-width incl. sidewalks (street 12 / avenue 24 / boulevard 32 wide)
 function lineLevel(n){ return (((n%16)+16)%16===0)?3:((((n%4)+4)%4===0)?2:1); }
 function axisInfo(v){ return 0; }                  // the square street lattice is gone: roads come from the map (RDS)
-function zoneType(x,z){ return TERR.urb(x,z)>0?'concrete':'grass'; }
+function zoneType(x,z){ return TERR.urb(x,z)>0?'concrete':'sand'; }
 // nearest road line to coordinate v: {pos, level, a, t}
 function nearestLine(v){ const n=Math.round((v-LINE_OFF)/PITCH), lv=lineLevel(n), L=ROAD_LV[lv]; return {pos:LINE_OFF+n*PITCH,level:lv,a:L.a,t:L.t,n}; }
 
@@ -1612,6 +1612,7 @@ const RS={cx:1e9,cz:1e9,arm:[],cen:[],grass:null};
           if(hc>1.5||(w===0&&sl>.2)){ const n=.5+.5*Math.sin(x*.011+Math.sin(z*.007)*2)*Math.sin(z*.015), fr=.8+.4*n;
             const bi=TERR.bio(x,z); let hr=(.64-.37*bi)*fr, hg=(.47+.05*bi)*fr, hb=(.31-.11*bi)*fr, hw=.95*_sm(1.5,10,hc); const rk=Math.max(_sm(.36,.62,sl),_sm(110,170,hc)); hr+=(.52-hr)*rk; hg+=(.5-hg)*rk; hb+=(.47-hb)*rk; hw=Math.max(hw,rk); const sn=_sm(185,235,hc)*(1-_sm(.5,.85,sl)); if(sn>0){ hr+=(.93-hr)*sn; hg+=(.95-hg)*sn; hb+=(.98-hb)*sn; }
             if(hw>w){ r=hr; g=hg; b=hb; w=hw; } }
+          if(w<.5&&hc>=-.25&&TERR.bio(x,z)<.3){ const q=.5+.5*Math.sin(x*.05+z*.031)*Math.sin(z*.043); if(TERR.urb(x,z)>0){ r=.36+.03*q; g=.35+.03*q; b=.33+.03*q; } else { r=.56+.04*q; g=.44+.04*q; b=.27+.03*q; } w=1; }   // desert between the city blocks
           ntc[v*3]=r; ntc[v*3+1]=g; ntc[v*3+2]=b; ntw[v]=w;
         }
         if(++J.row>N){ J.ph=2; } }
@@ -1705,9 +1706,9 @@ function updateDayNight(dt){
   scene.background = _dn1.copy(skyNight).lerp(skyDay, mix).lerp(skyDusk, dusk*.7);
   scene.fog.color.copy(_dn2.copy(fogNight).lerp(fogDay, mix).lerp(fogDusk, dusk*.6));
   ambient.color.copy(ambNight).lerp(ambDay, mix);
-  ambient.intensity = 0.5 + 0.2*mix;                       // nights stay readable
+  ambient.intensity = 0.45 + 0.15*mix;                       // nights stay readable
   sun.color.copy(moonCol).lerp(sunWhite, mix).lerp(sunWarm, dusk*.8);
-  sun.intensity = 0.42 + 0.78*mix;                        // the 'sun' doubles as a bright moon at night
+  sun.intensity = 0.4 + 0.55*mix;                        // the 'sun' doubles as a bright moon at night
 }
 
 /* =========================================================================
@@ -4134,7 +4135,7 @@ const RDS=(function(){
   const hs=(a,b)=>{ let h=(Math.imul(a|0,374761393)+Math.imul(b|0,668265263))|0; h=Math.imul(h^(h>>>15),2246822519); h=Math.imul(h^(h>>>13),3266489917); return ((h^(h>>>16))>>>0)/4294967296; };
   const R={ready:false,last:[1e9,1e9],decks:new Set(),nv:0,lines:TERR.RLINES};
   const VR=640;
-  for(const L of R.lines){ const p=L.pts; let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9; for(const q of p){ x0=Math.min(x0,q[0]); x1=Math.max(x1,q[0]); z0=Math.min(z0,q[1]); z1=Math.max(z1,q[1]); } L.bb=[x0-30,z0-30,x1+30,z1+30]; L.tar=!(L.w<5&&hs(L.id,7)<.5&&TERR.urb(L.mx,L.mz)<0); }
+  for(const L of R.lines){ const p=L.pts; let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9; for(const q of p){ x0=Math.min(x0,q[0]); x1=Math.max(x1,q[0]); z0=Math.min(z0,q[1]); z1=Math.max(z1,q[1]); } L.bb=[x0-30,z0-30,x1+30,z1+30]; L.tar=true; }
   const CAP=90000, pos=new Float32Array(CAP*3), col=new Float32Array(CAP*3), idx=new Uint32Array(CAP*3/2*3), nor=new Float32Array(CAP*3); for(let i=0;i<CAP;i++) nor[i*3+1]=1;
   const geo=new THREE.BufferGeometry(); geo.setAttribute('normal',new THREE.BufferAttribute(nor,3)); geo.setAttribute('position',new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage)); geo.setAttribute('color',new THREE.BufferAttribute(col,3).setUsage(THREE.DynamicDrawUsage)); geo.setIndex(new THREE.BufferAttribute(idx,1).setUsage(THREE.DynamicDrawUsage));
   const mat=new THREE.MeshLambertMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
@@ -4172,7 +4173,7 @@ const RDS=(function(){
           else if(k&1) strip(a,b,nx,nz,0,.1,y0+.03,y1+.03,WHT);
           if(w>5){ strip(a,b,nx,nz,w-.7,.07,y0+.03,y1+.03,WHT); strip(a,b,nx,nz,-w+.7,.07,y0+.03,y1+.03,WHT); } }
         else strip(a,b,nx,nz,0,w*.6,y0,y1,DIRT); }
-      if(L.tar){ for(let k=0;k<n;k++){ if(!near[k]||wet[k]||!yy[k]) continue; const p=P[k], end=(k===0||k===n-1); if(!end&&k%3) continue;
+      if(L.tar){ for(let k=0;k<n;k++){ if(!near[k]||wet[k]||!yy[k]) continue; const p=P[k], end=(k===0||k===n-1); 
           const q=TERR.roadQuery(p[0],p[1],L); if(!q||q.d>(end?8:2)) continue; const rr=Math.max(w,q.L&&q.L.w||w)+.6, y=yy[k]+.07;
           for(let s2=0;s2<12;s2++){ const a0=s2/12*6.2832, a1=(s2+1)/12*6.2832, cx=p[0], cz=p[1];
             quad(cx,y,cz, cx+Math.cos(a0)*rr,y,cz+Math.sin(a0)*rr, cx+Math.cos(a1)*rr,y,cz+Math.sin(a1)*rr, cx+Math.cos(a1)*rr,y,cz+Math.sin(a1)*rr, TAR); } } }
@@ -4260,7 +4261,7 @@ function pickTarget(en){
   for(let i=0;i<8;i++){
     const a=Math.random()*6.28, r=en.gang?2+Math.random()*4:4+Math.random()*10, x=en.home.x+Math.cos(a)*r, z=en.home.z+Math.sin(a)*r;
     if(!TERR.inBounds(x,z)||TERR.h(x,z)<-1.2||blockedAt(x,z,GY)) continue;
-    if(!en.gang&&zoneType(Math.round(x),Math.round(z))==='grass'&&Math.random()<.85) continue;
+    if(!en.gang&&zoneType(Math.round(x),Math.round(z))==='sand'&&Math.random()<.85) continue;
     en.target.set(x,0,z); return;
   }
   en.target.copy(en.mesh.position);

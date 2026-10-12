@@ -3,7 +3,7 @@ const g=boot(); g.start(); g.step(60); const d=g.d; const out=[]; const ok=(c,m)
 // ---- layout: road hierarchy
 const L=d.nearestLine; 
 ok(L(40).level===3&&L(-40).level===1&&L(360).level===2&&L(1320).level===3,'road levels: boulevard @40, street @-40, avenue @360, boulevard @1320');
-ok(d.zoneType(0,0)==='concrete'&&d.zoneType(-6000,0)==='grass','zones: city ground is concrete, countryside grass (streets come from the map roads)');
+ok(d.zoneType(0,0)==='concrete'&&d.zoneType(-6000,0)==='sand','zones: city ground is concrete, countryside grass (streets come from the map roads)');
 // widths
 let wB=0,wA=0,wS=0; for(let x=0;x<400;x+=.5){ if(d.zoneType(x,0)!=='grass'){ } } 
 const width=(c)=>{ let w=0; for(let x=c-40;x<c+40;x+=.5) if(d.zoneType(x,0.5+80*3)!=='grass') w+=.5; return w; };

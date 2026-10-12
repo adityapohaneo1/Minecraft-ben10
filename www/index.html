@@ -1689,21 +1689,25 @@ function groundTopAt(x,z,fy){
 /* =========================================================================
    DAY / NIGHT CYCLE
 ========================================================================= */
-const DAY_LENGTH = 99999999; // effectively frozen
-let dayT = 0.5; // locked at noon = full daylight
-const skyDay = new THREE.Color(0x8fc7f2), skyNight = new THREE.Color(0x0a1020);
-const fogDay = new THREE.Color(0x8fc7f2), fogNight = new THREE.Color(0x0a1020);
+const DAY_LENGTH = 1500; // seconds per full cycle (25 min): about 14 min of daylight, 2 x 1.5 min of dawn / dusk, ~8 min of night
+let dayT = 0.2; // start in the morning
+const skyDay = new THREE.Color(0x8fc7f2), skyNight = new THREE.Color(0x1d2c52), skyDusk = new THREE.Color(0xf29a62);
+const fogDay = new THREE.Color(0x8fc7f2), fogNight = new THREE.Color(0x1b2a4e), fogDusk = new THREE.Color(0xe8a47a);
+const sunWarm = new THREE.Color(0xffb070), sunWhite = new THREE.Color(0xffffff), moonCol = new THREE.Color(0x9db4ff), ambDay = new THREE.Color(0xffffff), ambNight = new THREE.Color(0x7d8fc8);
+const _dn1 = new THREE.Color(), _dn2 = new THREE.Color();
+function sunElev(){ return Math.sin(dayT*Math.PI*2)+.24; }          // > 0 = the sun is up (about 60% of the cycle)
 function updateDayNight(dt){
   dayT = (dayT + dt/DAY_LENGTH) % 1;
-  const angle = dayT * Math.PI * 2;
-  sun.position.set(player.pos.x + Math.cos(angle)*60, Math.max(8,Math.sin(angle)*70), player.pos.z + Math.sin(angle)*30);
+  const angle = dayT * Math.PI * 2, e = sunElev();
+  sun.position.set(player.pos.x + Math.cos(angle)*60, Math.max(8,e*70), player.pos.z + Math.sin(angle)*30);
   sun.target.position.copy(player.pos);      // keep the shadow frustum centered on the player as they roam
-  const light = Math.max(0.08, Math.sin(angle));
-  const mix = THREE.MathUtils.clamp(light,0,1);
-  scene.background = skyNight.clone().lerp(skyDay, mix);
-  scene.fog.color.copy(fogNight.clone().lerp(fogDay, mix));
-  ambient.intensity = 0.25 + 0.4*mix;
-  sun.intensity = 0.3 + 0.9*mix;
+  const mix = THREE.MathUtils.smoothstep(e,-.16,.4), dusk = Math.exp(-Math.pow(e/.17,2))*.85;
+  scene.background = _dn1.copy(skyNight).lerp(skyDay, mix).lerp(skyDusk, dusk*.7);
+  scene.fog.color.copy(_dn2.copy(fogNight).lerp(fogDay, mix).lerp(fogDusk, dusk*.6));
+  ambient.color.copy(ambNight).lerp(ambDay, mix);
+  ambient.intensity = 0.5 + 0.2*mix;                       // nights stay readable
+  sun.color.copy(moonCol).lerp(sunWhite, mix).lerp(sunWarm, dusk*.8);
+  sun.intensity = 0.42 + 0.78*mix;                        // the 'sun' doubles as a bright moon at night
 }
 
 /* =========================================================================
@@ -1940,9 +1944,9 @@ function animateRig(parts,dt,inp){
       P.hipsY=Math.sin(A.t*2.2)*.05; P.tLx=.15; P.tRx=-.1; P.kL=.35; P.kR=.55; P.sL.x=.25; P.sR.x=.25; P.sL.z=-.5; P.sR.z=.5; P.eL=.5; P.eR=.5; P.chX=.03; P.fL=.6; P.fR=.6;
       if(parts.leftArm2){ P.s2L.x=.3; P.s2R.x=.3; P.s2L.z=-.6; P.s2R.z=.6; P.e2L=.5; P.e2R=.5; }
     } else if(inp.jr){ // Jetray: wings spread wide and beating, legs trailing, tail streaming
-      const fl=Math.sin(A.t*(inp.moving?11:5))*(inp.moving?.32:.2);
-      P.sL.z=-(1.25+fl); P.sR.z=1.25+fl; P.sL.x=.25; P.sR.x=.25; P.eL=.15; P.eR=.15;
-      P.tLx=.22; P.tRx=.22; P.kL=.15; P.kR=.15; P.fL=.7; P.fR=.7; P.chX=inp.moving?-.05:.03; P.hdX=inp.moving?.3:0; P.hipsY=Math.sin(A.t*(inp.moving?11:5)+1)*.03;
+      // straight glide (reference clip): body in one straight line, wings held out flat and still - no flapping
+      P.sL.z=-1.5; P.sR.z=1.5; P.sL.x=0; P.sR.x=0; P.sL.y=0; P.sR.y=0; P.eL=.02; P.eR=.02;
+      P.tLx=0; P.tRx=0; P.kL=0; P.kR=0; P.fL=.55; P.fR=.55; P.chX=0; P.hdX=inp.moving?.55:0; P.hipsY=0;
     } else { // Superman: arms locked forward over the head, legs streamed behind, slight wobble
       const up=inp.moving?2.85:.55; P.sL.x=up; P.sR.x=up; P.eL=.1; P.eR=.1; P.sL.z=-.08; P.sR.z=.08;
       P.tLx=.12+Math.sin(A.t*9)*.14; P.tRx=.12-Math.sin(A.t*9)*.14; P.kL=.25; P.kR=.25; P.fL=.6; P.fR=.6; P.chX=inp.moving?-.05:.03; P.hdX=inp.moving?.35:0;
@@ -1959,7 +1963,7 @@ function animateRig(parts,dt,inp){
     P.chX += -.2*mv - .14*q*mv; P.hdX += .14*mv;
     P.chY += -sL*.28*mv; P.hdY += sL*.4*mv; P.hipsRZ += sL*.07*mv;                 // shoulders + flytrap head sway opposite the leading legs
     // video ref: arms held OUT to the sides, elbows bent, fingers spread, only a small counter-sway; no slamming
-    P.sL.x = .22 - sL*.22*mv; P.sR.x = .22 - sR*.22*mv; P.sL.z -= (.62+.1*r)*mv; P.sR.z += (.62+.1*r)*mv; P.eL += .3*mv; P.eR += .3*mv;   // ref: arms hang out-and-down ~40deg, slightly forward, claws drooping, small counter-swing
+    { const rb=A.t*1.9; P.sL.x=.06+Math.sin(rb+.6)*.03-sL*.05*mv; P.sR.x=.06+Math.sin(rb+1.2)*.03-sR*.05*mv; P.sL.z=-.05+sL*.015*mv; P.sR.z=.05+sL*.015*mv; P.sL.y=0; P.sR.y=0; P.eL=.12; P.eR=.12; }   // arms stay at his sides exactly as at rest, only a little sway   // ref: arms hang out-and-down ~40deg, slightly forward, claws drooping, small counter-swing
     P.hipsZ += -.06*q*lung0(ph);
     if(inp.wvWind>0){ const w=_sm(inp.wvWind);                                   // wind-up: all four roots pulled tight under the core, body sinks, shoulder pods flare, head tucks back
       P.hipsY += -.34*w; P.chX += -.3*w; P.hdX += -.35*w; P.tLx=_lerp(P.tLx,.75,w); P.tRx=_lerp(P.tRx,.75,w); P.kL=_lerp(P.kL,1.7,w); P.kR=_lerp(P.kR,1.7,w); P.sL.z += -.55*w; P.sR.z += .55*w; P.sL.x=_lerp(P.sL.x,.3,w); P.sR.x=_lerp(P.sR.x,.3,w); }
@@ -2275,7 +2279,7 @@ const ICON=(function(){
   };
 })();
 const ACT={
- scream:{label:'SCREAM',cost:20,cd:1.4,run:()=>sonicBlast(player.pos,flatFwd(player.yaw),25,10)},
+ scream:{label:'SCREAM',hold:v=>{ if(v){ if(player.energy>=8){ screamHeld=true; screamT=0; } } else screamHeld=false; },cost:0,cd:0},
  split:{label:'SPLIT',cost:25,cd:1,run:()=>splitEcho()},
  reps:{label:'REPLICAS',cost:0,cd:.2,show:()=>squad.length>1,run:()=>{ panelOpen=!panelOpen; renderSquad(); }},
  doom:{label:'SONIC DOOM',hold:v=>{ doomHeld=v; doomT=0; },cost:0,cd:0,show:()=>squad.length>1},
@@ -2384,7 +2388,7 @@ function setForm(formDef, kind){
   scene.add(player.model);
   { const st=HP.store[formDef.id]; player.health = Math.max(1,Math.min(formDef.maxHealth, st==null?formDef.maxHealth:st)); HP.prev=player.health; HP.unit=null; }
   player.energy = formDef.maxEnergy;
-  clearSquad(); player.superHeld=false; player.flameHeld=false; player.sprayHeld=false; doomHeld=false; if(carried) dropProp(); player.shieldT=0; if(shield){ scene.remove(shield); shield=null; } player.slowT=0; player.boostT=0; player.dashT=0; player.swimming=false; player.rollHeld=false; player.rolling=false; player.rollT=0; player.rollSpin=0; player.model.rotation.x=0; for(const k in actCd) delete actCd[k]; buildActions();
+  clearSquad(); player.superHeld=false; player.flameHeld=false; player.sprayHeld=false; doomHeld=false; screamHeld=false; if(carried) dropProp(); player.shieldT=0; if(shield){ scene.remove(shield); shield=null; } player.slowT=0; player.boostT=0; player.dashT=0; player.swimming=false; player.rollHeld=false; player.rolling=false; player.rollT=0; player.rollSpin=0; player.model.rotation.x=0; for(const k in actCd) delete actCd[k]; buildActions();
   player.specialTimer = 0; player._ball=0; player.rollHeld=false; player.rolling=false; player.rollT=0; player.rollSpin=0; player.xlAir=false; player.ejT=0; player.ejUsed=false; player.leapActive=false;
   document.getElementById('alien-name').textContent = formDef.name;
   document.getElementById('alien-tag').textContent = FORM_TAG[formDef.id]||'';
@@ -3336,7 +3340,7 @@ const MAX_FOV_BOOST = 30;
 const XLR8_MAX_FOV_BOOST = 4; // XLR8 gets restrained FOV widening so the character stays readable.
 const XLR8_CAM_PULL = 0.4; // At max super-speed, the camera moves back only 10%, not >2x.
 const XLR8_CAM_HEIGHT = 0.25; // Small extra height at speed; preserves a close third-person read.
-let lastFov = BASE_FOV, speedShakeT = 0, xtPrevS = 0, xtDust = 0, XT = null;
+let lastFov = BASE_FOV, speedShakeT = 0, xtPrevS = 0, xtDust = 0, XT = null, XS = null, XB = null;
 
 // XLR8 (VFX pack): three thin ribbon trails sampled from his hands + back (path-following), light streaks at top speed, brake dust at the feet.
 function xlrFx(dt,k){
@@ -3354,6 +3358,20 @@ function xlrFx(dt,k){
   }
   if(on&&xtPrevS>.45&&k<.25&&player.onGround) VFX.slide(feet,fw.clone().multiplyScalar(-1),2.2);   // hard stop: dirt + smoke starting exactly at contact, drifting back
   xtPrevS=on?k:0;
+  // Back streak: rigid to his back every frame (never lags), plus a radial edge blur overlay (motion blur)
+  if(!XS){
+    const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const g=cv.getContext('2d'), gr=g.createLinearGradient(0,0,256,0);
+    gr.addColorStop(0,'rgba(255,255,255,0.9)'); gr.addColorStop(.25,'rgba(150,225,255,0.6)'); gr.addColorStop(1,'rgba(60,160,255,0)'); g.fillStyle=gr;
+    g.beginPath(); g.moveTo(0,32); g.lineTo(256,2); g.lineTo(256,62); g.closePath(); g.fill();
+    const tx=new THREE.CanvasTexture(cv), mat=new THREE.MeshBasicMaterial({map:tx,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false});
+    XS=new THREE.Group(); const pg=new THREE.PlaneGeometry(1,1); pg.translate(.5,0,0);
+    const m1=new THREE.Mesh(pg,mat), m2=new THREE.Mesh(pg,mat); m2.rotation.x=Math.PI/2; const m3=m1.clone(); m3.position.y=.5; m3.scale.y=.6; const m4=m1.clone(); m4.position.y=-.45; m4.scale.y=.6;
+    [m1,m2,m3,m4].forEach(m=>{m.frustumCulled=false; XS.add(m);}); XS.visible=false; scene.add(XS);
+    XB=document.createElement('div'); XB.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:5;opacity:0;transition:opacity .15s;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);-webkit-mask-image:radial-gradient(circle at 50% 50%,transparent 35%,#000 95%);mask-image:radial-gradient(circle at 50% 50%,transparent 35%,#000 95%)'; document.body.appendChild(XB);
+  }
+  const sv=on&&k>.15&&!player.flying;
+  XS.visible=sv; XB.style.opacity=sv?Math.min(1,(k-.15)*1.6).toFixed(2):'0';
+  if(sv){ const L=1.8+9*k; XS.position.set(player.pos.x-fw.x*.3,player.pos.y,player.pos.z-fw.z*.3); XS.rotation.set(0,player.yaw-Math.PI/2,0); XS.scale.set(L,1.0+k*.6,1.0+k*.6); }
 }
 // Per-form VFX: flight exhaust/trails (Heatblast, Jetray, Chromastone), Cannonbolt roll dust, landing/takeoff puffs.
 let AUR=null, ffR=0, FT=null, ffWasGround=true, ffWasFly=false, ffVy=0, ffT=0;
@@ -3635,8 +3653,8 @@ function nearestTarget(p){
 }
 /* STREAMS (flame / ice / doom) + ICE + UNIT TAGS */
 const ices=[], iceMat=new THREE.MeshLambertMaterial({color:0xaee9ff,transparent:true,opacity:.7,emissive:0x1a5a7a});
-let doomHeld=false, doomT=0, streamT=0, flameTime=0;
-const isNight=()=>Math.sin(dayT*Math.PI*2)<0.15;
+let screamHeld=false, screamT=0, doomHeld=false, doomT=0, streamT=0, flameTime=0;
+const isNight=()=>sunElev()<0.02;
 function addIce(pos,sx,sy,sz,ref,rot){
   if(ref&&ref.ice){ ref.ice.life=ref.ice.max; return; }
   const m=new THREE.Mesh(UB,iceMat.clone()); m.scale.set(sx,sy,sz); m.position.copy(pos); m.rotation.y=rot||0; scene.add(m);
@@ -3935,7 +3953,7 @@ function swingSkyAnchor(){                         // a point up and ahead (alon
   const vx=player.leap&&player.leapActive?player.leap.x:(player.pos.x-SW.pp.x)/Math.max(.016,.016), vz=player.leap&&player.leapActive?player.leap.z:0;
   let fx=-Math.sin(player.yaw), fz=-Math.cos(player.yaw); const hs=Math.hypot(player.vel.x||0,player.vel.z||0);
   if(player.leap&&player.leapActive&&Math.hypot(player.leap.x,player.leap.z)>3){ const l=Math.hypot(player.leap.x,player.leap.z); fx=player.leap.x/l; fz=player.leap.z/l; }
-  const alt=player.pos.y-groundTopAt(player.pos.x,player.pos.z,player.pos.y), H=9, V=Math.max(8,Math.min(22,15+Math.max(0,-player.vel.y)*.35-Math.max(0,alt-12)*.9));   // anchor drops as he gets high, so he swings along instead of climbing forever
+  const alt=player.pos.y-groundTopAt(player.pos.x,player.pos.z,player.pos.y), H=12, V=Math.max(9,Math.min(28,19+Math.max(0,-player.vel.y)*.35-Math.max(0,alt-12)*.9));   // anchor drops as he gets high, so he swings along instead of climbing forever
   return _sk.set(player.pos.x+fx*H,player.pos.y+V,player.pos.z+fz*H);
 }
 function swingTry(){
@@ -3943,7 +3961,7 @@ function swingTry(){
   SW.on=true; SW.arm=SW.next; SW.next=1-SW.next; SW.anchor.copy(a); SW.ph=0; SW.grow=0; SW.t=0; SW.relT=0; SW.retr=0;
   { const fx=a.x-player.pos.x, fz=a.z-player.pos.z, l=Math.hypot(fx,fz)||1; SW.kx=fx/l; SW.kz=fz/l; }   // direction of the swing: used to kick him off the ground
   if(!SW.tube){ SW.tube=tubeMesh(VINE_MAT); SW.cap=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),VINE_MAT2); SW.bulb=new THREE.Mesh(new THREE.SphereGeometry(.14,8,6),VINE_MAT2); scene.add(SW.cap,SW.bulb); }
-  SW.tube.visible=SW.cap.visible=SW.bulb.visible=true; return true;
+  SW.tube.visible=SW.cap.visible=SW.bulb.visible=false; return true;
 }
 function swingEnd(hard){ SW.chain=false;
   if(SW.on&&!hard){ SW.rx=SW.vx; SW.rz=SW.vz; SW.relT=1.1; SW.ph=2; SW.retr=0; }   // keep momentum on release, tentacle snaps back
@@ -3997,20 +4015,16 @@ function updateSwing(dt){
   }
   if(SW.ph===2){ SW.retr+=dt/.16; if(SW.retr>=1){ SW.ph=0; SW.tube.visible=SW.cap.visible=SW.bulb.visible=false; return; } }
   if(!SW.on&&SW.ph!==2){ SW.tube.visible=SW.cap.visible=SW.bulb.visible=false; return; }
-  // draw: hand -> tip
-  player.model.updateMatrixWorld(true);
-  const hp=wvHandPos(SW.arm,new THREE.Vector3()), g=SW.ph===2?1-_sm(SW.retr):_sm(SW.grow), tip=hp.clone().lerp(SW.anchor,g), dir=tip.clone().sub(hp), len=dir.length();
-  const perp=new THREE.Vector3(-dir.z,0,dir.x).normalize(), amp=SW.ph===1?.06:(1-g*.6)*.7, pts=[];
-  for(let k=0;k<=10;k++){ const t=k/10, p=hp.clone().lerp(tip,t); p.addScaledVector(perp,Math.sin(t*8+performance.now()*.012)*amp*Math.sin(t*Math.PI)); pts.push(p); }
-  if(len>.05) setTube(SW.tube,pts,.09,14);
-  SW.cap.position.copy(tip); SW.bulb.position.copy(hp);
+  if(SW.tube){ SW.tube.visible=SW.cap.visible=SW.bulb.visible=false; }          // the swinging arm itself stretches to the anchor (see wvSwingPoseApply)
 }
 function wvSwingPose(){ if(!SW.on&&SW.ph!==2) return null;
   const sh=wvShoulderPos(SW.arm,_wv1), dy=SW.anchor.y-sh.y, hz=Math.hypot(SW.anchor.x-sh.x,SW.anchor.z-sh.z);
   return {arm:SW.arm,pitch:Math.max(0,Math.min(1.25,Math.atan2(dy,hz))),k:SW.ph===2?Math.max(0,1-SW.retr):_sm(SW.grow)}; }
 function wvSwingPoseApply(P,parts,w){
   const vs=parts.vStretch||(parts.vStretch=[0,0]), sg=w.arm?1:-1, S=w.arm?P.sR:P.sL, O=w.arm?P.sL:P.sR, k=w.k;
-  S.x=_lerp(S.x,1.71+w.pitch,k); S.y=_lerp(S.y,0,k); S.z=_lerp(S.z,sg*.14,k); P[w.arm?'eR':'eL']=_lerp(P[w.arm?'eR':'eL'],.05,k); vs[w.arm]=Math.max(vs[w.arm],.35*k);
+  S.x=_lerp(S.x,1.71+w.pitch,k); S.y=_lerp(S.y,0,k); S.z=_lerp(S.z,sg*.14,k); P[w.arm?'eR':'eL']=_lerp(P[w.arm?'eR':'eL'],.02,k);
+  { const sh=wvShoulderPos(w.arm,_wv1), hp=wvHandPos(w.arm,_wv2), D=hp.distanceTo(sh), est=Math.max(.25,D/(1+(SW.vsPrev||0)));   // natural arm length, measured from last frame's skeleton
+    SW.est=SW.est?SW.est+(est-SW.est)*.3:est; const want=Math.max(0,SW.anchor.distanceTo(sh)/SW.est-1); vs[w.arm]=Math.max(vs[w.arm],Math.min(80,want*k)); SW.vsPrev=vs[w.arm]; }
   O.x=_lerp(O.x,-.45,k); O.z=_lerp(O.z,-sg*.9,k); P[w.arm?'eL':'eR']=_lerp(P[w.arm?'eL':'eR'],.8,k);
   P.chX+=-.14*k; P.hipsY+=.04*k; P.tLx=_lerp(P.tLx,.55,k); P.tRx=_lerp(P.tRx,.25,k); P.kL=_lerp(P.kL,1.2,k); P.kR=_lerp(P.kR,.9,k);
 }
@@ -4158,6 +4172,10 @@ const RDS=(function(){
           else if(k&1) strip(a,b,nx,nz,0,.1,y0+.03,y1+.03,WHT);
           if(w>5){ strip(a,b,nx,nz,w-.7,.07,y0+.03,y1+.03,WHT); strip(a,b,nx,nz,-w+.7,.07,y0+.03,y1+.03,WHT); } }
         else strip(a,b,nx,nz,0,w*.6,y0,y1,DIRT); }
+      if(L.tar){ for(let k=0;k<n;k++){ if(!near[k]||wet[k]||!yy[k]) continue; const p=P[k], end=(k===0||k===n-1); if(!end&&k%3) continue;
+          const q=TERR.roadQuery(p[0],p[1],L); if(!q||q.d>(end?8:2)) continue; const rr=Math.max(w,q.L&&q.L.w||w)+.6, y=yy[k]+.07;
+          for(let s2=0;s2<12;s2++){ const a0=s2/12*6.2832, a1=(s2+1)/12*6.2832, cx=p[0], cz=p[1];
+            quad(cx,y,cz, cx+Math.cos(a0)*rr,y,cz+Math.sin(a0)*rr, cx+Math.cos(a1)*rr,y,cz+Math.sin(a1)*rr, cx+Math.cos(a1)*rr,y,cz+Math.sin(a1)*rr, TAR); } } }
     }
     geo.setDrawRange(0,ni); for(const k of ['position','color']) geo.attributes[k].needsUpdate=true; geo.index.needsUpdate=true; RAIL.instanceMatrix.needsUpdate=true; PIER.instanceMatrix.needsUpdate=true; R.nv=nv;
   };
@@ -4176,6 +4194,10 @@ function updateStreams(dt){
   if(fireOn||iceOn){
     if(player.energy<=0){ player.flameHeld=false; player.sprayHeld=false; }
     else if(iceOn||flameTime>.18){ player.energy=Math.max(0,player.energy-(fireOn?14:12)*dt); streamTick(fireOn?'fire':'ice',dt); }
+  }
+  if(screamHeld){                                  // SCREAM: tap = one blast, hold = keeps screaming while energy lasts (like Sonic Doom)
+    if(dn!=='echo_echo'||player.energy<=1||!player.alive){ screamHeld=false; }
+    else { screamT-=dt; if(screamT<=0){ screamT=.24; player.energy=Math.max(0,player.energy-3.4); player.attacking=Math.max(player.attacking||0,.25); sonicBlast(player.pos,flatFwd(player.yaw),11,15,2); shakeCamera(.07); } }
   }
   if(doomHeld){
     if(dn!=='echo_echo'||!squad.some(u=>u.energy>=6)){ doomHeld=false; return; }
@@ -4362,6 +4384,7 @@ function poseExtras(parts,moving,dt){
     const lv=player.form.id==='diamondhead';
     lean=lv?(moving?-.35:0):(moving?THREE.MathUtils.clamp(-(Math.PI/2-player.pitch),-1.0,0.2):-.12);
     if(player.form.id==='heatblast') lean=THREE.MathUtils.clamp(-.12+(player.pitch||0)*.5,-.5,.6);
+    if(player.form.id==='jetray') lean=moving?THREE.MathUtils.clamp(-(Math.PI/2-(player.pitch||0)*.6),-1.5,-.35):-.2;   // lies flat in the air like the reference
     const up=lv?1.0:(moving?2.9+S*.08:.5);
     if(lv&&(player._cl=(player._cl||0)+dt)>.09){ player._cl=0; VFX.smokePuffs(player.pos.clone().add(new THREE.Vector3(0,-.95,0)),1,.45,0x9ffcff); }
   } else if(player.swimming){
@@ -5322,8 +5345,9 @@ function updatePlayerOnFoot(dt){
     // Vertical steering: look up/down + move forward to climb/descend; hover when still.
     let cl = moving ? Math.sin(player.pitch) : 0; if(Math.abs(cl)<0.1) cl=0; else cl-=Math.sign(cl)*0.1;
     player.vel.y = cl*1.25*(player.form.flySpeed||8)*(player.boostT>0?1.7:1);
+    player.vel.y *= 1+Math.min(2.5,Math.max(0,player.pos.y-groundY)/160);        // climbing gets quicker with altitude, so the new 900 u ceiling is reachable
     player.pos.y += player.vel.y*dt;
-    const ceiling = 70; player.swimming=false;
+    const ceiling = 900; player.swimming=false;
     player.pos.y = Math.max(groundY + 1.2, Math.min(ceiling, player.pos.y));
     player.onGround = false;
   } else {

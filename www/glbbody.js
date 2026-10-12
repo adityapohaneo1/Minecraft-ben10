@@ -329,6 +329,13 @@ const GLBBODY=(function(){
     const n=G.bones.length, vs=p.vStretch;
     if(!G.stSide){ G.stSide=new Int8Array(n).fill(-1); for(let i=0;i<n;i++){ const e=G.ent[i], pe=G.par[i]>=0?G.ent[G.par[i]]:null;
         if(e&&(e.key==='eL'||e.key==='eR')) G.stSide[i]=e.key==='eL'?0:1; else if(pe&&(pe.key==='eL'||pe.key==='eR')&&!e) G.stSide[i]=pe.key==='eL'?0:1; } }
+    if(!G.shB){ G.shB=[-1,-1]; G.elB=[-1,-1]; G.shAx=[1,1]; G.elAx=[1,1];
+      const dom=v=>{ const a=Math.abs(v.x),b=Math.abs(v.y),c=Math.abs(v.z); return a>=b&&a>=c?0:(b>=c?1:2); };
+      for(let i=0;i<n;i++){ const e=G.ent[i]; if(!e||(e.key!=='eL'&&e.key!=='eR')) continue; const sd=e.key==='eL'?0:1; G.elB[sd]=i; G.shB[sd]=G.par[i]; G.shAx[sd]=dom(G.pBind[i]);
+        for(let j=0;j<n;j++) if(G.par[j]===i){ G.elAx[sd]=dom(G.pBind[j]); break; } } }
+    for(let sd=0;sd<2;sd++){ const ks=[G.shB[sd],G.elB[sd]], axs=[G.shAx[sd],G.elAx[sd]], st=vs?vs[sd]:0;
+      for(let q=0;q<2;q++){ const bi=ks[q]; if(bi<0) continue; const b=G.bones[bi];                       // a stretched arm gets thinner: one long whip, not a fat tube
+        if(st>.4){ const th=Math.max(.14,Math.pow(1+st,-.3)); b.scale.set(1,1,1); if(axs[q]!==0) b.scale.x=th; if(axs[q]!==1) b.scale.y=th; if(axs[q]!==2) b.scale.z=th; } else b.scale.set(1,1,1); } }
     for(let i=0;i<n;i++){
       const b=G.bones[i], pi=G.par[i], e=G.ent[i];
       const pq = pi>=0 ? G.qw[pi] : G.qParRel[i];

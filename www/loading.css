@@ -1,0 +1,16 @@
+  /* ============ LOADING SCREEN (full-screen art + progress bar overlay) ============ */
+  #ld{position:fixed;inset:0;z-index:2000;background:#000;color:#eafff2;overflow:hidden;opacity:1;transition:opacity .6s ease;touch-action:none;font-family:'Segoe UI',Roboto,Consolas,monospace;}
+  #ld.hide{opacity:0;pointer-events:none;}
+  #ld .ld-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 38%,#0e4128 0%,#04140d 58%,#000 100%);}
+  #ld .ld-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s ease;}
+  #ld .ld-img.on{opacity:1;}
+  #ld .ld-scrim{position:absolute;left:0;right:0;bottom:0;height:34%;background:linear-gradient(to top,rgba(0,0,0,.72),rgba(0,0,0,0));pointer-events:none;}
+  #ld .ld-ui{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(env(safe-area-inset-bottom,0px),10px) + clamp(14px,6vh,38px));width:min(560px,70vw);}
+  #ld .ld-row{display:flex;justify-content:space-between;align-items:baseline;font-size:clamp(9px,2.5vh,12px);letter-spacing:3px;font-weight:700;color:#d8ffe8;text-shadow:0 1px 6px #000,0 0 3px #000;margin-bottom:7px;}
+  #ld .ld-bar{position:relative;height:clamp(7px,1.9vh,11px);border-radius:99px;background:rgba(2,12,8,.74);border:1px solid rgba(57,255,138,.6);box-shadow:0 0 14px rgba(0,0,0,.7),inset 0 0 6px rgba(0,0,0,.85);overflow:hidden;}
+  #ld .ld-fill{position:absolute;left:0;top:0;bottom:0;width:100%;transform-origin:0 50%;transform:scaleX(0);border-radius:99px;background:linear-gradient(90deg,#12a458,#39ff8a 72%,#caffe0);box-shadow:0 0 12px rgba(57,255,138,.9);will-change:transform;overflow:hidden;}
+  #ld .ld-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.6) 50%,transparent 70%);transform:translateX(-100%);animation:ldsheen 1.2s linear infinite;}
+  @keyframes ldsheen{to{transform:translateX(100%);}}
+  #ld .ld-err{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,86vw);padding:14px 16px;background:rgba(20,4,4,.88);border:1px solid #ff6b6b;color:#ffb0b0;font-size:12px;line-height:1.5;text-align:center;word-break:break-word;}
+  #ld .ld-err.on{display:block;}
+  #ld .ld-err{white-space:pre-line;}

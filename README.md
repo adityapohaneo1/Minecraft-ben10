@@ -238,3 +238,13 @@ instead of the box anatomy. Ben, Diamondhead, civilians and enemies still use th
 - Not verified on a real device: performance of Heatblast (77k verts) on low-end phones.
 
 - HUD portraits now share ONE offscreen WebGL renderer (previously one new context per portrait, which made phones drop the main game view - white screen + sad-face icon - when the Omnitrix dial opened).
+
+## v60 changes
+- `index.html` is now the START PAGE (silent boot screen -> title menu with title music). PLAY opens `game.html`.
+- `game.html` is the game. It has its own silent loading screen that waits for scripts, character models, effect textures,
+  sounds and the first part of the city before the game is shown, then the music starts.
+- Loading screen art (you supply): `www/loading/boot.jpg` and `www/loading/game.jpg` (see `www/loading/README.txt`).
+- `audio.js`: sounds are decoded in memory before play; a real recording never gets a synth sound layered on it;
+  one music state (title / game) so the two can't overlap.
+- Wildvine swing: long rope, swings toward where he is facing, body no longer spins.
+- Settings (quality, Omnitrix timer, perf stats) are saved and shared between the start page and the game.

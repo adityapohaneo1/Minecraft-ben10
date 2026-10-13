@@ -1,6 +1,6 @@
 // Dependency-free headless harness: real game script + real three.min.js in a Node vm, mock DOM/audio/WebGL.
 const fs=require('fs'), vm=require('vm');
-const SRC=process.env.GAME||''+__dirname+'/../www/index.html';
+const SRC=process.env.GAME||''+__dirname+'/../www/game.html';
 const THREE_SRC=fs.readFileSync(''+__dirname+'/../www/three.min.js','utf8');
 function anyProxy(){ const f=function(){}; const p=new Proxy(f,{get(t,k){ if(k===Symbol.toPrimitive) return ()=>0; if(k==='then') return undefined; if(k==='value'||k==='currentTime'||k==='sampleRate') return k==='sampleRate'?44100:0; return p; },set(){return true;},apply(){return p;},construct(){return p;}}); return p; }
 class El{
@@ -39,6 +39,7 @@ function boot(opts={}){
   vm.runInContext(fs.readFileSync(''+__dirname+'/../www/mapdata.js','utf8'),ctx,{filename:'mapdata.js'});
   vm.runInContext(fs.readFileSync(''+__dirname+'/../www/terrain.js','utf8'),ctx,{filename:'terrain.js'});
   vm.runInContext(fs.readFileSync(''+__dirname+'/../www/vfx.js','utf8'),ctx,{filename:'vfx.js'});
+  vm.runInContext(fs.readFileSync(''+__dirname+'/../www/audio.js','utf8'),ctx,{filename:'audio.js'});
   vm.runInContext(`THREE.WebGLRenderer=function(){return{domElement:document.createElement('canvas'),setSize(){},setPixelRatio(){},setClearColor(){},render(){},dispose(){},shadowMap:{enabled:false,type:0},setAnimationLoop(){},getContext(){return null},capabilities:{},info:{render:{calls:0}}};};`,ctx);
   try{ vm.runInContext(main,ctx,{filename:'game.js'}); }catch(e){ errors.push('LOAD: '+(e.stack||e)); }
   const step=(n=1,ms=16.67)=>{ for(let i=0;i<n;i++){ T+=ms; frameStart=Number(process.hrtime.bigint())/1e6; const cbs=raf.splice(0); for(const cb of cbs){ try{ cb(T); }catch(e){ errors.push('FRAME: '+(e.stack||e)); } } } };

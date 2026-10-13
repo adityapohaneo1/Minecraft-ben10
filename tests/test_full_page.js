@@ -1,7 +1,7 @@
 const { JSDOM } = require('jsdom');
 const fs = require('fs');
 
-let html = fs.readFileSync('/home/claude/ben10/www/index.html', 'utf8');
+let html = fs.readFileSync('/home/claude/ben10/www/game.html', 'utf8');
 const threeSrc = fs.readFileSync('/home/claude/ben10/www/three.min.js', 'utf8');
 // Patch WebGLRenderer to a no-op stub right after three.js defines it, before any game code runs.
 // We're hunting variable-ordering/reference bugs in the game script, not testing three.js's own renderer.

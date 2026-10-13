@@ -1,7 +1,7 @@
 // Shared jsdom harness. Injects a test-only __debug bridge (NOT present in the shipped file).
 const { JSDOM } = require('jsdom');
 const fs = require('fs');
-const SRC = process.env.GAME || '/home/claude/proj/www/index.html';
+const SRC = process.env.GAME || '/home/claude/proj/www/game.html';
 const THREE_SRC = fs.readFileSync('/home/claude/proj/www/three.min.js','utf8');
 
 function boot(bridgeExtra=''){

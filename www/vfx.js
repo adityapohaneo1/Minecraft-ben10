@@ -197,6 +197,7 @@ VFX.prismTrailPush=function(arr,p,k){ if(!arr) return; const r=camRight(_pb), w=
 VFX.prismTrailRelease=function(arr){ if(arr) arr.forEach(t=>VFX.trailRelease(t)); };
 VFX.preload=function(){ ['big_hit','impact_white','star_explosion','explosion','charge','wispy_smoke_01','electric_ring','lightstreaks','wavy_blue','fire_01','flame_01','vortex','fire_point',
   'spark_01','spark_02','dirt_01','dirt_02','smoke_01','smoke_05','trace_01','trace_02','trace_03','trace_04','trace_05','trace_06','star_01','star_02','twirl_01','light_01','light_02','flare_01'].forEach(texOf); };
+VFX.texState=function(){ let n=0,d=0; for(const k in TEX){ n++; if(TEX[k].ready||TEX[k].failed) d++; } return [d,n]; };   // [loaded, total] effect textures (used by the loading screen)
 VFX.init=function(T,sc,cam){ THREE=T; THREE_=T; scene=sc; camera=cam; quad=new THREE.PlaneGeometry(1,1); loader=new THREE.TextureLoader(); VFX.ok=true; VFX.preload(); };
 window.VFX=VFX;
 })();

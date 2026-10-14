@@ -268,3 +268,9 @@ instead of the box anatomy. Ben, Diamondhead, civilians and enemies still use th
 
 ## v65 changes
 - XLR8 afterimages now use his real GLB model (frozen pose copies, blue + fading), not the simple body.
+
+## v66 changes
+- Heatblast: top speed uses the normal running pose (faster cadence only); head flames now follow the GLB head bone and stand upright on it.
+- Four Arms: no left-right spine sway; lower arms sit closer to the body so the upper arms don't clip them.
+- Echo Echo double jump: short scream recording only, then it stops.
+- Vehicle horn: sounds only while held (`Audio_.hornHold`).

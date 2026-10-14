@@ -1822,6 +1822,7 @@ function animateRig(parts,dt,inp){
   let r=_sm((s-1.25)/1.1), q=_sm((s-2.5)/1.2); const mv=_sm(s/.35);
   const GL=grounded&&!inp.flying&&!inp.swimming&&!inp.wv;
   if(GL){ r=_sm((uH-1.2)/1.2); q=_sm((uH-2.9)/.9); }
+  if(inp.hb){ r=Math.min(r,.5); q=0; }     // Heatblast: top speed uses the SAME pose as normal running, just a faster cadence (no extra hunch / flailing)
   A.vyS=_damp(A.vyS,inp.vy||0,12,dt);
   // landing detection
   if(!A.wasGround && grounded){ A.land=Math.min(1,.35+Math.max(0,-(A.lastVy||0))/22); }
@@ -1929,10 +1930,10 @@ function animateRig(parts,dt,inp){
   if(inp.fa && grounded && !inp.flying && !inp.swimming){ // Four Arms (reference clips): heavy gorilla build - hunched forward, wide planted legs, big arms hang low and swing with the shoulders; on a run they flare out and pump
     const w=mv, sw=Math.sin(ph);
     P.hipsY -= .05+.05*r; P.chX += -.2-.16*w-.1*r*w; P.hdX += .16+.16*w; P.tLz=-.11; P.tRz=.11;
-    P.chY *= 1.5; P.hipsRZ += sw*.05*w; P.tLx*=.9; P.tRx*=.9;
-    P.sL.x = .32-sL*(.5+.3*r)*w; P.sR.x = .32-sR*(.5+.3*r)*w; P.sL.z=-(.36+.16*r); P.sR.z=.36+.16*r; P.sL.y=0; P.sR.y=0;
+    P.chY=0; P.chZ=0; P.hipsRZ=0; P.hipsRY*=.15; P.hdY=0; P.tLx*=.9; P.tRx*=.9;   // spine stays square: no left-right sway while he moves
+    P.sL.x = .32-sL*(.5+.3*r)*w; P.sR.x = .32-sR*(.5+.3*r)*w; P.sL.z=-(.44+.16*r); P.sR.z=.44+.16*r; P.sL.y=0; P.sR.y=0;
     P.eL = .3+(.45+.65*r)*w+.3*Math.max(0,-sL)*w; P.eR = .3+(.45+.65*r)*w+.3*Math.max(0,-sR)*w;
-    if(parts.leftArm2){ P.s2L.x=.5-sR*(.45+.25*r)*w; P.s2R.x=.5-sL*(.45+.25*r)*w; P.s2L.z=-(.2+.12*r); P.s2R.z=.2+.12*r; P.e2L=.5+(.35+.5*r)*w; P.e2R=.5+(.35+.5*r)*w; }
+    if(parts.leftArm2){ P.s2L.x=.5-sR*(.45+.25*r)*w; P.s2R.x=.5-sL*(.45+.25*r)*w; P.s2L.z=-(.05+.04*r); P.s2R.z=.05+.04*r; P.e2L=.5+(.35+.5*r)*w; P.e2R=.5+(.35+.5*r)*w; }
   }
   if(inp.fa && !grounded && !inp.flying && !inp.swimming){ // Four Arms leap (reference): body upright, all four arms thrown out wide and up, legs together; arms come forward on the way down
     const rise=_sm(A.vyS/6), fall=_sm(-A.vyS/8);
@@ -2143,7 +2144,7 @@ function buildCharacter(kind){
     // head is always on fire: layered flame puffs above the head
     const hf=new THREE.Group(); parts.headFlame=[];
     for(let i=0;i<6;i++){ const sp=mkSp(i%2?0xffb02e:0xffe27a,i); sp.userData.i=i; hf.add(sp); parts.headFlame.push(sp); }
-    hf.position.set(0,parts.cfg.headS*.78,0); parts.head.add(hf); parts.hfGroup=hf;   // child of the head, so it follows the head through lean / run / fly poses
+    hf.position.y=parts.dims.total-.42; g.add(hf); parts.hfGroup=hf;   // repositioned every frame onto the head (see poseExtras)
     // flying rock: dark red faceted slab with a soft, long flame trail streaming behind it (reference art)
     const rk=new THREE.Group();
     const rg=new THREE.CylinderGeometry(.9,.5,.5,6,1); rg.translate(0,-.25,0); const pa=rg.attributes.position;
@@ -3940,6 +3941,7 @@ function swingSkyAnchor(){
   SW.fyaw=by;                                                                                              // the body keeps this heading for the whole swing (no more spinning round to face the anchor)
   return _sk.set(player.pos.x+fx*H,player.pos.y+V,player.pos.z+fz*H);
 }
+const _hfA=new THREE.Vector3(), _hfB=new THREE.Vector3();
 const WV_SWING=false;   // tentacle swing is switched off for now (set true to bring it back)
 function swingTry(){
   const a=swingSkyAnchor();
@@ -4391,6 +4393,10 @@ function poseExtras(parts,moving,dt){
   if((player.superT||0)>0.2&&!player.flying&&!player.swimming){ const _gp=m.userData.parts; lean=-.6*player.superT*((_gp&&_gp.glb)?GLBBODY.leanMul(player.form.id):1); }
   m.rotation.x+=(lean-m.rotation.x)*.18;
   { const hp=m.userData.parts; if(hp&&hp.headFlame){ const t=performance.now()/1000, k=player.flying?1.5:1;
+      // stand the flames on the real head: follow the GLB head bone (or the rig head) and rise straight up from it
+      { const G=hp.glb; if(G&&!hp._hb) hp._hb=G.bones.find(b=>b.name==='bip_head_07')||G.bones.find(b=>/head/i.test(b.name))||null;
+        const hb=hp._hb||hp.head; if(hb&&hp.g){ hp.g.updateWorldMatrix(true,false); const w=_hfA; hb.getWorldPosition(w); const w2=_hfB.copy(w); w2.y+=1;
+          const l0=hp.g.worldToLocal(w), l1=hp.g.worldToLocal(w2); hp.hfGroup.position.copy(l0).addScaledVector(l1.sub(l0).normalize(),G?.15:.5); } }
       hp.headFlame.forEach((sp,i)=>{ const f=Math.sin(t*(11+i*3)+i*1.7); sp.position.set(Math.sin(t*6+i*1.3)*.07*(1+i*.3), .18+i*.16+.05*f, 0.0);
         const w=(.3-i*.03)*k*(1+.15*f), h=(.5+i*.16)*k*(1+.22*Math.sin(t*14+i)); sp.scale.set(w,h,1); sp.material.opacity=.85; }); } }
   const rk=m.userData.parts&&m.userData.parts.rock;
@@ -4804,7 +4810,7 @@ function doJump(){
       player.flying = false; // gravity resumes and brings you back down
     }
   } else if(!player.onGround && player.form.id==='echo_echo' && !player.ejUsed && !player.swimming){ // double jump: a sonic blast under his feet pushes him up
-    player.ejUsed=true; player.ejT=.5; player.vel.y=player.form.jump*1.05;
+    player.ejUsed=true; player.ejT=.5; player.vel.y=player.form.jump*1.05; if(!Audio_.sample('scream',.8,1,.5)) Audio_.scream();
     const dn=new THREE.Vector3(0,-1,0), hd=player.model.userData.parts&&player.model.userData.parts.head;
     setTimeout(()=>{ const fp=new THREE.Vector3(); if(hd) hd.getWorldPosition(fp); else fp.copy(player.pos); fp.y-=.55; // the scream comes out of his mouth (face is pointing at the ground by now)
       for(let i=0;i<4;i++) ringFx(fp,dn,i*.03);
@@ -4927,7 +4933,7 @@ function enterCar(p){
   player.flying=false; player.onLadder=null; player.rolling=false; player.rollHeld=false; player.superSpeed=0; player.superHeld=false; player.flameHeld=false; player.sprayHeld=false; player.atkHeld=false; player.vel.set(0,0,0);
   document.body.classList.add('driving'); bannerText(VTof(p).name); statusText(isTouch?'◀ ▶ STEER - GAS - BRAKE (HOLD) TO STOP, THEN REVERSE':'W/S THROTTLE  A/D STEER  SPACE HANDBRAKE');
 }
-function exitCar(forced){
+function exitCar(forced){ Audio_.hornHold(false);
   const p=player.driving; if(!p) return;
   player.driving=null; p.driver=null; document.body.classList.remove('driving'); Audio_.engineOff();
   const c=Math.cos(p.yaw), sn=Math.sin(p.yaw), m=p.mesh.position;
@@ -4945,7 +4951,7 @@ function driveTick(dt){
   player.energy=Math.min(player.form.maxEnergy,player.energy+dt*4);
   player.model.visible=false;
   vehHornCd=Math.max(0,vehHornCd-dt);
-  if((isTouch?player.jumpHeld:player.atkHeld) && vehHornCd<=0){ vehHornCd=.4; Audio_.horn(); }
+  Audio_.hornHold(!!(isTouch?player.jumpHeld:player.atkHeld));
   let thr, str, brake, drift;
   if(isTouch){   // buttons: LEFT / RIGHT steer, car drives itself forward, BRAKE slows to a stop then reverses while held
     str=(drv.r?1:0)-(drv.l?1:0); thr=player.atkHeld?-1:(drv.g?1:0); brake=false; drift=player.atkHeld;
@@ -5596,7 +5602,7 @@ const ppShow=id=>{ ['pp-main','pp-opts'].forEach(k=>document.getElementById(k).s
 function releaseInputs(){ AIM.on=false; player.csBlastHeld=false; moveInput.x=0; moveInput.y=0; player.flameHeld=false; player.sprayHeld=false; player.atkHeld=false; player.superHeld=false; player.rollHeld=false; player.runLatch=false; joyId=null; resetJoy(); joyZone.classList.remove('run','held'); camTouchId=null; drv.l=drv.r=drv.g=false; document.querySelectorAll('.steer').forEach(x=>x.classList.remove('on')); for(const k in keys) keys[k]=false; try{ if(carried===null) {} }catch(e){} }
 function openPause(){
   if(PAUSED||!gameOn||!player.alive&&false) return;
-  PAUSED=true; releaseInputs(); ppShow('pp-main'); pausePage.classList.add('show'); Audio_.menu(true); ['flame','scream','hbfly'].forEach(n=>Audio_.loop(n,false));
+  PAUSED=true; releaseInputs(); ppShow('pp-main'); pausePage.classList.add('show'); Audio_.menu(true); ['flame','scream','hbfly'].forEach(n=>Audio_.loop(n,false)); Audio_.hornHold(false);
   if(!pauseHist){ history.pushState({p:1},''); pauseHist=true; }
   if(document.pointerLockElement && document.exitPointerLock) document.exitPointerLock();
 }

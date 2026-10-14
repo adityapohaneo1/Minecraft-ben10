@@ -163,7 +163,7 @@ function nz(dur,vol,f0,f1,type,q){
 }
 const thump=(f,dur,vol)=>beep(f,dur,'sine',vol,Math.max(20,f*.4));
 // persistent loops: engine, tyre screech, ambience
-let eng=null, scr=null, amb=null;
+let eng=null, scr=null, amb=null, horn=null;
 function ensureEngine(){ const a=ac(); if(!a||!running()||eng) return eng;
   try{ const o1=a.createOscillator(), o2=a.createOscillator(), fl=a.createBiquadFilter(), g=a.createGain();
     o1.type='sawtooth'; o2.type='square'; fl.type='lowpass'; fl.frequency.value=520; g.gain.value=0;
@@ -221,6 +221,12 @@ const API={
   warn(){ beep(1200,.09,'square',.06); setTimeout(()=>beep(1200,.09,'square',.06),140); },
   timeout(){ if(sample('timeout',.8)) return; beep(900,.5,'sawtooth',.13,90); thump(70,.4,.25); },
   swoosh(x){ return sample(x?'swoosh_xlr8':'swoosh',.7); },
+  // vehicle horn: sounds exactly while the button is held and cuts the moment it is released
+  hornHold(on){
+    if(buffers.horn){ loop('horn',on,.7); return; }
+    const a=ac(); if(!a) return;
+    if(on&&!horn&&running()){ try{ const g=a.createGain(), o1=a.createOscillator(), o2=a.createOscillator(); o1.type=o2.type='square'; o1.frequency.value=330; o2.frequency.value=415; g.gain.value=0; o1.connect(g); o2.connect(g); g.connect(out()); o1.start(); o2.start(); g.gain.setTargetAtTime(.07,a.currentTime,.01); horn={g,o1,o2}; }catch(e){} }
+    else if(!on&&horn){ const h=horn; horn=null; try{ h.g.gain.cancelScheduledValues(a.currentTime); h.g.gain.setTargetAtTime(0,a.currentTime,.015); h.o1.stop(a.currentTime+.1); h.o2.stop(a.currentTime+.1); }catch(e){} } },
   // engine: sr = 0..1 fraction of top speed, thr = 0..1 throttle. Fake gearbox so it revs up, drops, revs again.
   engine(sr,thr){ const e=ensureEngine(); const a=ac(); if(!e||!a) return; const t=a.currentTime;
     const gear=Math.min(4,Math.floor(sr*5)), inG=sr*5-gear, rpm=Math.max(inG,thr*.3), f=48+gear*8+rpm*82;

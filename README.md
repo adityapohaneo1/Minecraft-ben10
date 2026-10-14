@@ -256,3 +256,15 @@ instead of the box anatomy. Ben, Diamondhead, civilians and enemies still use th
 - Blast buttons are plain buttons again (`AIM_DRAG=false`), shots go to the crosshair.
 - Sonic Doom loops like Scream and stops on release.
 - Music now starts when the loading screen ends (was waiting for pause/continue).
+
+## v62 changes
+- XLR8: running pose from the reference clips (arms swept back and out, rigid; far-forward lean; longer drive). Kicked-up rock chunks while running, and the speed blur deepens with speed.
+
+## v63 changes
+- XLR8 sprint VFX replaced: trails, speed-streak lines and dust slides removed. Only kicked-up rock chunks + edge motion blur remain.
+
+## v64 changes
+- XLR8 sprint: blue afterimages (5 fading ghost copies of his pose) and short blue streaks off both blade arms and his back, on top of the rock chunks + edge blur.
+
+## v65 changes
+- XLR8 afterimages now use his real GLB model (frozen pose copies, blue + fading), not the simple body.

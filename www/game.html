@@ -1918,9 +1918,12 @@ function animateRig(parts,dt,inp){
     const sp=_ez(inp.superT||0), mm=Math.max(mv,.0);
     P.hipsY -= .26+.06*sp; P.tLx -= .08; P.tRx -= .08; P.kL += .42*(1-.3*sp); P.kR += .42*(1-.3*sp); P.fL -= .15; P.fR -= .15; P.tLz=-.1*(1-sp*.6); P.tRz=.1*(1-sp*.6);
     P.chX += -.3-.2*sp; P.hdX += .32+.2*sp;
-    P.sL.x = P.sL.x*.2 + .08*(1-sp); P.sR.x = P.sR.x*.2 + .08*(1-sp);
-    P.eL = _lerp(.32+.12*mm*Math.max(0,-sL),.4,sp); P.eR = _lerp(.32+.12*mm*Math.max(0,-sR),.4,sp);
-    P.sL.z = -.38*(1-sp); P.sR.z = .38*(1-sp);
+    // standing: blades held out and down. Running (reference): both arms swept back and out, almost straight, held rigid; body pitched far forward
+    const rn=_sm(Math.min(1,mv*1.15));
+    P.sL.x = _lerp(P.sL.x*.2+.08*(1-sp), -1.3-.3*sp, rn); P.sR.x = _lerp(P.sR.x*.2+.08*(1-sp), -1.3-.3*sp, rn);
+    P.eL = _lerp(_lerp(.32+.12*mm*Math.max(0,-sL),.4,sp),.14,rn); P.eR = _lerp(_lerp(.32+.12*mm*Math.max(0,-sR),.4,sp),.14,rn);
+    P.sL.z = -.38*(1-sp)*(1-rn) - .46*rn; P.sR.z = .38*(1-sp)*(1-rn) + .46*rn;
+    P.chX += -.3*rn; P.hdX += .32*rn; P.tLx*=1+.2*rn; P.tRx*=1+.2*rn; P.kL += .22*rn; P.kR += .22*rn; P.chY*=.6;
     P.chZ += 0; P.hipsRZ += 0;
   }
   if(inp.fa && grounded && !inp.flying && !inp.swimming){ // Four Arms (reference clips): heavy gorilla build - hunched forward, wide planted legs, big arms hang low and swing with the shoulders; on a run they flare out and pump
@@ -1965,7 +1968,7 @@ function animateRig(parts,dt,inp){
   if(inp.ejB>0){ const e=_sm(Math.min(1,inp.ejB*1.6)); P.sL.x=_lerp(P.sL.x,-2.3,e); P.sR.x=_lerp(P.sR.x,-2.3,e); P.sL.z=-.25*e; P.sR.z=.25*e; P.eL=.15; P.eR=.15; P.hdX+=.5*e; P.chX+=.15*e; P.tLx+=.35*e; P.tRx+=.35*e; P.kL+=.2*e; P.kR+=.2*e; }
   // ---- special stances ----
   if(inp.superT>.2 && grounded && !inp.flying){ // XLR8 sprint: arms swept back, deep forward lean, driving knees
-    const k=_ez(inp.superT); P.sL.x=_lerp(P.sL.x,-1.5,k); P.sR.x=_lerp(P.sR.x,-1.5,k); P.eL=_lerp(P.eL,.35,k); P.eR=_lerp(P.eR,.35,k); P.chX+=-.35*k; P.hdX+=.3*k; P.sL.z=-.12; P.sR.z=.12;
+    const k=_ez(inp.superT); P.sL.x=_lerp(P.sL.x,-1.5,k); P.sR.x=_lerp(P.sR.x,-1.5,k); P.eL=_lerp(P.eL,.35,k); P.eR=_lerp(P.eR,.35,k); P.chX+=-.35*k; P.hdX+=.3*k; P.sL.z=-.46; P.sR.z=.46;
     P.tLx*=1.25; P.tRx*=1.25; P.kL*=1.2; P.kR*=1.2;
   }
   if(inp.ball>0){ const b=_sm(inp.ball); // Cannonbolt ball: chin tucked, back rounded, knees drawn up, arms hugging the shins
@@ -3299,34 +3302,46 @@ const MAX_FOV_BOOST = 30;
 const XLR8_MAX_FOV_BOOST = 4; // XLR8 gets restrained FOV widening so the character stays readable.
 const XLR8_CAM_PULL = 0.4; // At max super-speed, the camera moves back only 10%, not >2x.
 const XLR8_CAM_HEIGHT = 0.25; // Small extra height at speed; preserves a close third-person read.
-let lastFov = BASE_FOV, speedShakeT = 0, xtPrevS = 0, xtDust = 0, XT = null, XS = null, XB = null, xbK = 0; const xbF=new THREE.Vector3(), xbR=new THREE.Vector3();
+let lastFov = BASE_FOV, speedShakeT = 0, xtPrevS = 0, xtDust = 0, xtRock = 0, XT = null, xGh = null, xGhT = 0, xHT = null, XS = null, XB = null, xbK = 0; const xbF=new THREE.Vector3(), xbR=new THREE.Vector3();
 
 // XLR8 (VFX pack): three thin ribbon trails sampled from his hands + back (path-following), light streaks at top speed, brake dust at the feet.
 function xlrFx(dt,k){
+  // XLR8 sprint VFX = the reference clip: rock / asphalt chunks kicked up and flung around him, plus edge motion blur that deepens with speed.
+  // (the old light trails, speed-streak lines and dust slides are gone)
   const on=player.form.id==='xlr8'&&!player.driving&&player.alive;
-  if(!XT){ XT=[VFX.trail('trace_01',{width:.3,life:.42,step:.4,n:16,tint:0x9fe8ff}),VFX.trail('trace_02',{width:.3,life:.42,step:.4,n:16,tint:0x9fe8ff}),VFX.trail('trace_03',{width:.4,life:.5,step:.5,n:18,tint:0xcfeeff})]; }
-  const fw=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)), rt=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw));
+  const fw=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw));
   const feet=new THREE.Vector3(player.pos.x,player.pos.y-.9,player.pos.z);
-  if(on&&k>.12&&!player.flying){
-    const it=Math.min(1,k*1.3), c=player.pos;
-    VFX.trailPush(XT[0],new THREE.Vector3(c.x-rt.x*.5,c.y+.15,c.z-rt.z*.5),it);
-    VFX.trailPush(XT[1],new THREE.Vector3(c.x+rt.x*.5,c.y+.15,c.z+rt.z*.5),it);
-    VFX.trailPush(XT[2],new THREE.Vector3(c.x-fw.x*.35,c.y-.1,c.z-fw.z*.35),it*.8);
-    if(k>.55&&Math.random()<dt*5) VFX.flip('lightstreaks',new THREE.Vector3(c.x-fw.x*1.2,c.y,c.z-fw.z*1.2),{size:2.6,dur:.3,tint:0x9fe8ff,alpha:.45,mask:1,rot:Math.atan2(rt.x,rt.z)});
-    if(player.onGround){ xtDust+=dt; if(xtDust>.1){ xtDust=0; VFX.slide(feet,fw.clone().multiplyScalar(-1),.5+k); } }
+  if(on&&player.onGround&&!player.flying&&(k>.12||(Math.hypot(moveInput.x,moveInput.y)>.3))){
+    xtRock+=dt*(6+22*k); while(xtRock>1){ xtRock-=1; const a=Math.random()*6.283;
+      VFX.particle(Math.random()<.5?'dirt_01':'dirt_02',feet.clone().add(new THREE.Vector3(Math.cos(a)*.4,.1,Math.sin(a)*.4)),
+        {size:.12+Math.random()*.14,sizeEnd:.06,life:.7+Math.random()*.6,add:false,tint:Math.random()<.5?0x6b5a48:0x4a4540,alpha:1,grav:14,drag:.4,
+         vel:new THREE.Vector3(-fw.x*(3+9*k)+(Math.random()-.5)*5,3+Math.random()*(4+5*k),-fw.z*(3+9*k)+(Math.random()-.5)*5)}); } }
+  // ---- afterimages: translucent blue copies of HIS model (the GLB body), frozen in the pose he had a moment ago, fading out fast ----
+  const live=player.model&&player.model.userData.parts, LG=live&&live.glb, sprint=on&&player.onGround&&!player.flying&&k>.3&&LG;
+  if(LG&&!xGh){
+    xGh=[]; for(let i=0;i<5;i++){
+      const root=THREE.SkeletonUtils.clone(LG.pivot), bones=[]; root.traverse(o=>{ if(o.isBone) bones.push(o); });
+      const mk=sk=>new THREE.MeshBasicMaterial({color:0x4fc3ff,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,fog:false,skinning:sk});
+      const mS=mk(true), mP=mk(false);
+      root.traverse(o=>{ if(o.isMesh){ o.material=o.isSkinnedMesh?mS:mP; o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false; } });
+      root.visible=false; scene.add(root); xGh.push({root,bones,mats:[mS,mP],t:0,max:.3,on:false}); }
   }
-  if(on&&xtPrevS>.45&&k<.25&&player.onGround) VFX.slide(feet,fw.clone().multiplyScalar(-1),2.2);   // hard stop: dirt + smoke starting exactly at contact, drifting back
-  xtPrevS=on?k:0;
-  // Speed streaks: the pack's blue line texture stretched from his back straight along the way he came, re-anchored every frame; lingers and shortens after he stops. Edge blur overlay = motion blur.
+  if(xGh&&sprint){ xGhT+=dt; if(xGhT>.055){ xGhT=0; const gh=xGh.find(g=>!g.on)||xGh.reduce((a,b)=>a.t<b.t?a:b);
+      LG.pivot.updateWorldMatrix(true,false); LG.pivot.matrixWorld.decompose(gh.root.position,gh.root.quaternion,gh.root.scale);
+      for(let i=0;i<gh.bones.length&&i<LG.bones.length;i++){ const lb=LG.bones[i], gb=gh.bones[i]; gb.position.copy(lb.position); gb.quaternion.copy(lb.quaternion); gb.scale.copy(lb.scale); }
+      gh.t=gh.max=.12+.2*Math.min(1,k); gh.on=true; gh.root.visible=true; gh.root.updateMatrixWorld(true); } }
+  if(xGh) for(const gh of xGh){ if(!gh.on) continue; gh.t-=dt; if(gh.t<=0){ gh.on=false; gh.root.visible=false; gh.mats.forEach(m=>m.opacity=0); } else { const o=.5*(gh.t/gh.max); gh.mats.forEach(m=>m.opacity=o); } }
+  // ---- blue streaks: short bright ribbons streaming off his blade arms and back ----
+  if(!xHT) xHT=[0,1,2].map(()=>VFX.trail('trace_01',{width:.16,life:.28,step:.3,n:12,tint:0x4fc3ff}));
+  if(sprint&&live.handL&&live.handR){ const pl=new THREE.Vector3(), pr=new THREE.Vector3(), pb=new THREE.Vector3(); live.handL.getWorldPosition(pl); live.handR.getWorldPosition(pr); (live.chest||live.hips).getWorldPosition(pb);
+    const it=Math.min(1,k*1.4); VFX.trailPush(xHT[0],pl,it); VFX.trailPush(xHT[1],pr,it); VFX.trailPush(xHT[2],pb.addScaledVector(fw,-.3),it*.8); }
+  else xHT.forEach(t=>VFX.trailClear(t));
   const sv=on&&!player.flying;
-  if(sv&&k>xbK) xbK=k; else xbK=Math.max(0,xbK-dt*1.7);
-  xbF.copy(fw); xbR.copy(rt);
   if(!XB){
-    const mk=(w,dy,sd)=>VFX.beam('lightstreaks',f=>{ f.set(player.pos.x-xbF.x*.25+xbR.x*sd,player.pos.y+dy,player.pos.z-xbF.z*.25+xbR.z*sd); },t=>{ const L=xbK>.1?.8+8*xbK:.001; t.set(player.pos.x-xbF.x*(.25+L)+xbR.x*sd,player.pos.y+dy,player.pos.z-xbF.z*(.25+L)+xbR.z*sd); },w,{size:1,dur:.5,tint:0xb8ecff,alpha:.75,mask:1});
-    XS=[mk(3,0,0),mk(1.8,.7,.5),mk(1.8,-.5,-.5)];
     XB=document.createElement('div'); XB.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:5;opacity:0;transition:opacity .15s;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);-webkit-mask-image:radial-gradient(circle at 50% 50%,transparent 35%,#000 95%);mask-image:radial-gradient(circle at 50% 50%,transparent 35%,#000 95%)'; document.body.appendChild(XB);
   }
   XB.style.opacity=(sv&&k>.15)?Math.min(1,(k-.15)*1.6).toFixed(2):'0';
+  { const bl=(1.5+6*Math.min(1,k)).toFixed(1); if(XB._bl!==bl){ XB._bl=bl; XB.style.webkitBackdropFilter=XB.style.backdropFilter='blur('+bl+'px)'; } }
 }
 // Per-form VFX: flight exhaust/trails (Heatblast, Jetray, Chromastone), Cannonbolt roll dust, landing/takeoff puffs.
 let AUR=null, ffR=0, FT=null, ffWasGround=true, ffWasFly=false, ffVy=0, ffT=0;

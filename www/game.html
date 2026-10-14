@@ -1913,7 +1913,6 @@ function animateRig(parts,dt,inp){
     P.tLx=.05*rise+.9*apex+.25*fall; P.tRx=-.05*rise+.8*apex+.2*fall; P.kL=.08*rise+1.35*apex+.12*fall; P.kR=.08*rise+1.35*apex+.12*fall; P.fL=.2; P.fR=.2;
     P.hipsY=.1*rise-.03*apex; P.chX=-.28*rise+.32*fwdM*(apex+fall)*.8; P.hdX=-.3*apex+.05;
     P.sL.x=-.35*rise+.25*apex+.1*fall; P.sR.x=P.sL.x; P.sL.z=-.12*rise-1.15*apex-.8*fall; P.sR.z=-P.sL.z; P.eL=P.eR=.15+.3*apex;
-    vs[0]=Math.max(vs[0],.4*rise); vs[1]=Math.max(vs[1],.4*rise);
   }
   if(inp.xl && grounded && !inp.flying && !inp.swimming){ // XLR8 (from the reference clip): wide splayed crouch, torso hunched slightly, arms held OUT and down to the sides, barely swinging
     const sp=_ez(inp.superT||0), mm=Math.max(mv,.0);
@@ -1924,9 +1923,24 @@ function animateRig(parts,dt,inp){
     P.sL.z = -.38*(1-sp); P.sR.z = .38*(1-sp);
     P.chZ += 0; P.hipsRZ += 0;
   }
+  if(inp.fa && grounded && !inp.flying && !inp.swimming){ // Four Arms (reference clips): heavy gorilla build - hunched forward, wide planted legs, big arms hang low and swing with the shoulders; on a run they flare out and pump
+    const w=mv, sw=Math.sin(ph);
+    P.hipsY -= .05+.05*r; P.chX += -.2-.16*w-.1*r*w; P.hdX += .16+.16*w; P.tLz=-.11; P.tRz=.11;
+    P.chY *= 1.5; P.hipsRZ += sw*.05*w; P.tLx*=.9; P.tRx*=.9;
+    P.sL.x = .32-sL*(.5+.3*r)*w; P.sR.x = .32-sR*(.5+.3*r)*w; P.sL.z=-(.36+.16*r); P.sR.z=.36+.16*r; P.sL.y=0; P.sR.y=0;
+    P.eL = .3+(.45+.65*r)*w+.3*Math.max(0,-sL)*w; P.eR = .3+(.45+.65*r)*w+.3*Math.max(0,-sR)*w;
+    if(parts.leftArm2){ P.s2L.x=.5-sR*(.45+.25*r)*w; P.s2R.x=.5-sL*(.45+.25*r)*w; P.s2L.z=-(.2+.12*r); P.s2R.z=.2+.12*r; P.e2L=.5+(.35+.5*r)*w; P.e2R=.5+(.35+.5*r)*w; }
+  }
+  if(inp.fa && !grounded && !inp.flying && !inp.swimming){ // Four Arms leap (reference): body upright, all four arms thrown out wide and up, legs together; arms come forward on the way down
+    const rise=_sm(A.vyS/6), fall=_sm(-A.vyS/8);
+    P.tLx=.2*rise+.1*fall; P.tRx=.12*rise+.05*fall; P.kL=.55*rise+.3*fall; P.kR=.6*rise+.35*fall; P.tLz=-.05; P.tRz=.05;
+    P.chX=-.04*rise+.08*fall; P.hdX=.08; P.hipsY=.02;
+    P.sL.x=.25+.8*rise*.4+.45*fall; P.sR.x=P.sL.x; P.sL.z=-(1.0+.3*rise); P.sR.z=-P.sL.z; P.eL=.25+.15*fall; P.eR=P.eL;
+    if(parts.leftArm2){ P.s2L.x=.15+.4*rise*.5+.5*fall; P.s2R.x=P.s2L.x; P.s2L.z=-(.7+.3*rise); P.s2R.z=-P.s2L.z; P.e2L=.3+.2*fall; P.e2R=P.e2L; }
+  }
   if(inp.hb && grounded && !inp.flying && !inp.swimming && !(inp.cast>0)){ // Heatblast: knees drive, fists pump at a bent elbow, slight forward lean when running
     P.kL=P.kL*1.55+.28*mv; P.kR=P.kR*1.55+.28*mv; P.tLx*=1.12; P.tRx*=1.12; P.fL-=.2*mv; P.fR-=.2*mv; P.hipsY-=.04*mv;
-    P.eL+=(.55+.7*r)*mv+.2*(1-mv); P.eR+=(.55+.7*r)*mv+.2*(1-mv); P.sL.z-=.08; P.sR.z+=.08; P.chX+=-.05*mv-.16*r; P.hdX+=.05*mv+.12*r;
+    P.eL+=(.7+.8*r)*mv+.2*(1-mv); P.eR+=(.7+.8*r)*mv+.2*(1-mv); P.sL.x*=1.25; P.sR.x*=1.25; P.sL.z=-.03-.04*(1-mv); P.sR.z=.03+.04*(1-mv); P.chX+=-.08*mv-.24*r; P.hdX+=.08*mv+.2*r;   // sprinter: arms pumped close at ~90deg, strong forward lean, head up
   }
   if(inp.hb && inp.flying && !inp.swimming){ // rock flight: Heatblast surfs standing on a flying lava rock - upright, knees soft, arms out for balance
     const t=A.t, sw=Math.sin(t*2.4), sw2=Math.sin(t*3.7+1), sp=Math.min(1,mv+.0), fl=Math.sin(t*9)*.5+Math.sin(t*14)*.5;
@@ -2126,7 +2140,7 @@ function buildCharacter(kind){
     // head is always on fire: layered flame puffs above the head
     const hf=new THREE.Group(); parts.headFlame=[];
     for(let i=0;i<6;i++){ const sp=mkSp(i%2?0xffb02e:0xffe27a,i); sp.userData.i=i; hf.add(sp); parts.headFlame.push(sp); }
-    hf.position.y=parts.dims.total-.42; g.add(hf); parts.hfGroup=hf;
+    hf.position.set(0,parts.cfg.headS*.78,0); parts.head.add(hf); parts.hfGroup=hf;   // child of the head, so it follows the head through lean / run / fly poses
     // flying rock: dark red faceted slab with a soft, long flame trail streaming behind it (reference art)
     const rk=new THREE.Group();
     const rg=new THREE.CylinderGeometry(.9,.5,.5,6,1); rg.translate(0,-.25,0); const pa=rg.attributes.position;
@@ -2693,6 +2707,7 @@ function updateCamera(){
 ========================================================================= */
 const projectiles = [];
 const _hv=new THREE.Vector3();
+const AIM_DRAG=false;   // drag-to-aim joystick on blast buttons: off, buttons fire at the crosshair
 const AIM={on:false,yaw:0,pitch:0};   // drag-to-aim: while a blast button is dragged, shots go where the thumb points, without turning or steering the body
 function aimVec(){ const yw=player.yaw+AIM.yaw, p=AIM.pitch; return new THREE.Vector3(Math.cos(p)*-Math.sin(yw),Math.sin(p),Math.cos(p)*-Math.cos(yw)); }
 function aimDirFrom(start){
@@ -3487,7 +3502,7 @@ function sonicBlast(from,dir,dmg,range,rings){
   // so enemies in a wider radius around the source notice and start heading that way.
   enemies.forEach(en=>{ if(!en.alive||en.npc) return; if(en.mesh.position.distanceTo(from) < range*2) en.alertedT = Math.max(en.alertedT||0, 4); });
   props.forEach(p=>{ if(p.state!=='rest') return; const v=p.mesh.position.clone().sub(from); v.y=0; if(v.length()<range&&dir.angleTo(v.normalize())<.7){ p.state='fall'; p.vel.set(dir.x*11,5,dir.z*11); } });
-  Audio_.sonic(screamHeld);   // held scream = the looping recording already covers it; replica blasts use the same recording; the synth is only a fallback when the file is missing
+  Audio_.sonic(screamHeld||doomHeld);   // held scream = the looping recording already covers it; replica blasts use the same recording; the synth is only a fallback when the file is missing
 }
 const ECHO_S=()=>{ const a=ALIENS.find(x=>x.id==='echo_echo'); return (a&&a.modelScale)||1; };
 function splitEcho(){
@@ -3910,6 +3925,7 @@ function swingSkyAnchor(){
   SW.fyaw=by;                                                                                              // the body keeps this heading for the whole swing (no more spinning round to face the anchor)
   return _sk.set(player.pos.x+fx*H,player.pos.y+V,player.pos.z+fz*H);
 }
+const WV_SWING=false;   // tentacle swing is switched off for now (set true to bring it back)
 function swingTry(){
   const a=swingSkyAnchor();
   SW.on=true; SW.hold=true; SW.arm=SW.next; SW.next=1-SW.next; SW.anchor.copy(a); SW.ph=0; SW.grow=0; SW.t=0; SW.relT=0; SW.retr=0;
@@ -3926,7 +3942,7 @@ function swingPre(dt){                                   // runs before movement
   if(player.form.id!=='wildvine'){ if(SW.on||SW.ph) swingEnd(true); return; }
   const air=!player.onGround&&!player.flying&&!player.swimming&&!player.onLadder;
   const held=swingHeld(); SW.held=held?SW.held+dt:0; SW.airT=air?SW.airT+dt:0; SW.cd=Math.max(0,SW.cd-dt);
-  if(!held) SW.lock=false; if(!SW.on&&air&&held&&!SW.lock&&SW.held>.14&&SW.airT>.05&&SW.cd<=0&&player.alive&&!(player.wvJumpT>0)){ swingTry(); SW.cd=.35; }
+  if(!held) SW.lock=false; if(WV_SWING&&!SW.on&&air&&held&&!SW.lock&&SW.held>.14&&SW.airT>.05&&SW.cd<=0&&player.alive&&!(player.wvJumpT>0)){ swingTry(); SW.cd=.35; }
   if(SW.on&&(SW.ph===1||(SW.ph===0&&SW.chain))){
     player.leap=player.leap||{x:0,z:0}; player.leapActive=true; player.leap.x=SW.vx; player.leap.z=SW.vz;
   } else if(SW.relT>0&&air){
@@ -4139,7 +4155,7 @@ function updateStreams(dt){
   updateDome(dt); updateChromaCharge(dt); updateCsBlast(dt); updateEyes(dt);
   const dn=player.form.id, fireOn=player.flameHeld&&dn==='heatblast', iceOn=player.sprayHeld&&dn==='diamondhead';
   if(fireOn) flameTime+=dt;
-  Audio_.loop('flame',fireOn&&flameTime>.18&&player.energy>0,.7); Audio_.loop('scream',!!screamHeld&&dn==='echo_echo',.8); Audio_.loop('hbfly',dn==='heatblast'&&!!player.flying&&player.alive,.5);
+  Audio_.loop('flame',fireOn&&flameTime>.18&&player.energy>0,.7); Audio_.loop('scream',(!!screamHeld||!!doomHeld)&&dn==='echo_echo',.8); player.hbFlyT=player.flying?(player.hbFlyT||0)+dt:0; Audio_.loop('hbfly',dn==='heatblast'&&!!player.flying&&player.alive&&player.hbFlyT>.6,.5);
   if(!fireOn&&!iceOn&&STR.b) streamBeamOff();
   if(fireOn||iceOn){
     if(player.energy<=0){ player.flameHeld=false; player.sprayHeld=false; }
@@ -4336,7 +4352,7 @@ function buildActions(){
     const b=document.createElement('div'); b.className='abtn act'; b.dataset.hud='a'+i; box.appendChild(b); actEls.push(b);
     const go=e=>{ Audio_.resume(); useAction(a,i); e.preventDefault(); };
     b.addEventListener('touchstart',go,{passive:false}); b.addEventListener('mousedown',go);
-    if(a.aim) bindAimDrag(b);
+    if(a.aim&&AIM_DRAG) bindAimDrag(b);
     if(a.hold){ const up=e=>{ a.hold(false); e.preventDefault(); }; ['touchend','touchcancel'].forEach(n=>b.addEventListener(n,up,{passive:false})); ['mouseup','mouseleave'].forEach(n=>b.addEventListener(n,up)); }
   });
   if(window.__applyHud) window.__applyHud();
@@ -4715,7 +4731,7 @@ document.getElementById('btn-attack').addEventListener('touchend', ()=> clearTim
 function jumpPress(){
   if(!player.alive||player.driving) return;
   if(player.form.id==='wildvine' && player.onGround && !player.flying && !player.swimming && !player.onLadder && !(player.wvJumpT>0)){ player.wvJumpT=.17; return; }   // anticipation: roots pull in, body sinks like a wound spring, THEN the launch
-  if(player.form.id==='four_arms' && player.onGround && !player.flying && !player.swimming && !player.onLadder){ player.leapCharging=true; player.leapT=0; player.leapC=0; return; }
+  if(player.form.id==='four_arms' && player.onGround && !player.flying && !player.swimming && !player.onLadder){ leapNow(.8); return; }   // instant big jump: no crouch, no charge, just the explosion sound
   doJump();
 }
 function jumpRelease(){
@@ -4729,8 +4745,8 @@ function leapNow(c){
   let mx=moveInput.x,my=moveInput.y; if(Math.hypot(mx,my)<.15){ mx=0; my=1; }
   const dx=f.x*my+r.x*mx, dz=f.z*my+r.z*mx, l=Math.hypot(dx,dz)||1, hs=4+c*15;
   player.vel.y=13+c*21.5; player.onGround=false; player.leap={x:dx/l*hs,z:dz/l*hs}; player.leapActive=true; player.leapPow=c; player._airVy=player.vel.y;
-  Audio_.heavyHit(); { const b=player.pos.clone(); b.y-=.8; VFX.takeoff(b,1.4+c*1.2); VFX.dirtBurst(b,6,.9); }
-  shakeCamera(.12+.28*c);
+  Audio_.explosion();
+  shakeCamera(.1);
 }
 function updateLeap(dt){
   if(player.form.id!=='four_arms' || !player.alive){ player.leapCharging=false; player.leapC=0; player.leapActive=false; }
@@ -4766,7 +4782,7 @@ function doJump(){
   if(player.swimming){ player.vel.y=7; return; }
   if(player.form.flies){
     if(!player.flying){
-      player.flying = true;
+      player.flying = true; if(player.form.id==='heatblast'){ Audio_.explosion(); player.hbFlyT=0; }
       player.vel.y = player.form.jump;
       statusText('TAKING OFF — look up/down + move to steer, JUMP again to land');
     } else {
@@ -5104,7 +5120,7 @@ function playerAnimate(parts,dt,moving){
     if(burn){ const tt=performance.now()/1000, k=.55+.25*Math.sin(tt*9)+.12*Math.sin(tt*23); for(const m of parts.all) m.emissive.setRGB(.38*k,.14*k,.01*k); player._burn=true; }
     else if(player._burn&&parts.all){ for(const m of parts.all) m.emissive.setHex(m.userData.baseEmis||0); player._burn=false; } }
   animateRig(parts,dt,{pos:player.pos,fwd,grounded:player.onGround||climb||(id==='xlr8'&&(player.superT||0)>.2&&!player.flying&&Math.abs(player.vel.y)<9),vy:player.vel.y,flying:player.flying,hover:id==='diamondhead',moving,
-    swimming:player.swimming,ball:player._ball||0,carrying:!!carried,cast:id==='heatblast'?Math.max(player.castT||0,player.castHold>0?1:0):0,castHold:id==='heatblast'&&player.castHold>0,castSide:player.castSide||0,aimP:((id==='chromastone'&&(player.csT>0||player.chgHeld))||(id==='heatblast'&&(player.castT>0||player.castHold>0))||(id==='wildvine'&&atk))?csAimPitch():player.pitch,bodyP:player.pitch,xl:id==='xlr8',xlLeap:!!player.xlAir,tf:TF.active?TF.t:0,tfBen:player.form===BEN,ejB:Math.max(0,player.ejT||0)/.5,hb:id==='heatblast',wvS:id==='wildvine'?(wvStabPose()||(WEB.pose>0?{kind:'right',coil:0,ext:1,env:_sm(Math.min(1,(.95-WEB.pose)/.15)),fx:0}:null)):null,wvSw:id==='wildvine'?wvSwingPose():null,wvWind:(id==='wildvine'&&player.wvJumpT>0)?1-player.wvJumpT/.17:0,cs:id==='chromastone'?Math.max(player.csT||0,player.chgHeld?1:0):0,csChg:id==='chromastone'&&player.chgHeld?Math.min(1,Math.max(0,((player.chgT||0)-.2)/.15)):0,id,jr:id==='jetray',wv:id==='wildvine',superT:id==='xlr8'?(player.superT||0):0,atk,hurt:(player.hurtT||0)/.35,climb,climbSpd:Math.abs(player.vel.y),charge:0});
+    swimming:player.swimming,ball:player._ball||0,carrying:!!carried,cast:id==='heatblast'?Math.max(player.castT||0,player.castHold>0?1:0):0,castHold:id==='heatblast'&&player.castHold>0,castSide:player.castSide||0,aimP:((id==='chromastone'&&(player.csT>0||player.chgHeld))||(id==='heatblast'&&(player.castT>0||player.castHold>0))||(id==='wildvine'&&atk))?csAimPitch():player.pitch,bodyP:player.pitch,xl:id==='xlr8',xlLeap:!!player.xlAir,tf:TF.active?TF.t:0,tfBen:player.form===BEN,ejB:Math.max(0,player.ejT||0)/.5,hb:id==='heatblast',fa:id==='four_arms',wvS:id==='wildvine'?(wvStabPose()||(WEB.pose>0?{kind:'right',coil:0,ext:1,env:_sm(Math.min(1,(.95-WEB.pose)/.15)),fx:0}:null)):null,wvSw:id==='wildvine'?wvSwingPose():null,wvWind:(id==='wildvine'&&player.wvJumpT>0)?1-player.wvJumpT/.17:0,cs:id==='chromastone'?Math.max(player.csT||0,player.chgHeld?1:0):0,csChg:id==='chromastone'&&player.chgHeld?Math.min(1,Math.max(0,((player.chgT||0)-.2)/.15)):0,id,jr:id==='jetray',wv:id==='wildvine',superT:id==='xlr8'?(player.superT||0):0,atk,hurt:(player.hurtT||0)/.35,climb,climbSpd:Math.abs(player.vel.y),charge:0});
 }
 // Presentation-layer inertia: gameplay velocity stays instant, the body does not. Any change of speed along the facing
 // direction (starting, braking, sudden stops) pitches the whole body forward through a damped spring and then settles.

@@ -248,3 +248,11 @@ instead of the box anatomy. Ben, Diamondhead, civilians and enemies still use th
   one music state (title / game) so the two can't overlap.
 - Wildvine swing: long rope, swings toward where he is facing, body no longer spins.
 - Settings (quality, Omnitrix timer, perf stats) are saved and shared between the start page and the game.
+
+## v61 changes
+- Wildvine: tentacle swing off (`WV_SWING=false` in game.html), no arm stretch on jump.
+- Four Arms: instant jump (explosion sound, no crouch/charge); new heavy gorilla walk/run and a spread-arms jump pose.
+- Heatblast: sprinter arms, head flames now ride on the head, explosion then flight loop on take-off.
+- Blast buttons are plain buttons again (`AIM_DRAG=false`), shots go to the crosshair.
+- Sonic Doom loops like Scream and stops on release.
+- Music now starts when the loading screen ends (was waiting for pause/continue).

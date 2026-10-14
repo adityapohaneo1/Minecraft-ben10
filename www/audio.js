@@ -62,12 +62,12 @@ function preload(names,onProgress){
 
 /* ---------------------------- one-shots and loops ---------------------------- */
 const live={};                                            // name -> number of currently playing copies (polyphony cap)
-function sample(n,vol,rate){
+function sample(n,vol,rate,maxDur){
   const b=buffers[n]; if(!b) return false;                // no recording: caller falls back to the synth sound
   if(!running()) return true;                             // a recording exists but audio is still locked: stay silent, do NOT fall back to the synth
   if((live[n]||0)>=6) return true;
   try{ const s=ctx.createBufferSource(), g=ctx.createGain(); s.buffer=b; if(rate) s.playbackRate.value=rate; g.gain.value=clamp01(vol==null?.8:vol);
-    s.connect(g); g.connect(out()); live[n]=(live[n]||0)+1; s.onended=()=>{ live[n]=Math.max(0,(live[n]||1)-1); try{ g.disconnect(); }catch(e){} }; s.start(); }catch(e){}
+    s.connect(g); g.connect(out()); if(maxDur){ const t=ctx.currentTime; g.gain.setValueAtTime(g.gain.value,t+maxDur*.7); g.gain.linearRampToValueAtTime(0,t+maxDur); } live[n]=(live[n]||0)+1; s.onended=()=>{ live[n]=Math.max(0,(live[n]||1)-1); try{ g.disconnect(); }catch(e){} }; s.start(); if(maxDur) s.stop(ctx.currentTime+maxDur+.02); }catch(e){}
   return true;
 }
 // looping recordings (flamethrower, flight, scream): loop(name,true,vol) starts / keeps it going, loop(name,false) stops it
@@ -187,7 +187,7 @@ const API={
   has:n=>!!(buffers[n]||music[n]),
   // ---- music ----
   music:setWant,                                          // 'title' | 'game' | 'none'
-  enableGame(on){ M.gameOn=!!on; if(on){ applyMusic(); startAmbient(); } else applyMusic(); },
+  enableGame(on){ M.gameOn=!!on; if(on){ if(M.want==='none') M.want='game'; unlock(); applyMusic(); startAmbient(); } else applyMusic(); },
   menu(on){ setWant(on?'title':'game'); },                // pause page: title music over the paused game, game track resumes where it was
   stopMusic(){ setWant('none'); },
   playNextTrack(){ nextTrack(); },
@@ -210,7 +210,7 @@ const API={
   special(st){ if(st==='crystal'&&sample('crystal',.8)) return; if(st==='fire'&&sample('burning',.7)) return; beep(400,.3,'sawtooth',.18,700); nz(.25,.08,900,3000,'bandpass',2); },
   // one blast of Echo Echo's sonic scream. While the scream button is held the looping recording already covers it (held=true) -> silence here.
   sonic(held){ if(held&&buffers.scream) return;
-    if(buffers.scream){ const t=performance.now(); if(t-lastSonic<180) return; lastSonic=t; sample('scream',.6); return; }
+    if(buffers.scream){ const t=performance.now(); if(t-lastSonic<180) return; lastSonic=t; sample('scream',.6,1,.3); return; }   // short clip: a blast never keeps sounding after the button is released
     beep(1300,.55,'sawtooth',.14,300); beep(1750,.5,'square',.06,420); nz(.5,.1,4000,800,'bandpass',2); },
   scream(){ if(sample('scream',.8)) return; beep(1300,.55,'sawtooth',.14,300); beep(1750,.5,'square',.06,420); nz(.5,.1,4000,800,'bandpass',2); },
   death(){ beep(400,.6,'sawtooth',.2,60); thump(60,.5,.3); },

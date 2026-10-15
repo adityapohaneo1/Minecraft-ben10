@@ -33,9 +33,10 @@ const GLBBODY=(function(){
         sL:['Bone006_018'], eL:['Bone007_019'], sR:['Bone002_03'], eR:['Bone003_04'],
         tL:['Bone013_042'], kL:['Bone014_043'], fL:['Bone016_044'], tR:['Bone010_038'], kR:['Bone011_039'], fR:['Bone015_040'] },
       down:{} },
-    ben:{ syn:'ben', face:0, map:{ hips:['hips'], chest:['spine'], head:['neck'], sL:['upperArmL'], eL:['foreArmL'], sR:['upperArmR'], eR:['foreArmR'],
-        tL:['thighL'], kL:['shinL'], fL:['footL'], tR:['thighR'], kR:['shinR'], fR:['footR'] },
-      down:{ upperArmL:['foreArmL',5], foreArmL:[null,5], upperArmR:['foreArmR',5], foreArmR:[null,5] } },
+    // Ben = Fortnite "Ben Tennyson" skin: a real skinned model (bones cut from 279 to 27 by tools/glb-prep/prep_skinned.mjs). Faces +Z, A-posed arms.
+    ben:{ face:Math.PI, map:{ hips:['pelvis_05'], chest:['spine_03_08'], head:['neck_01_011'], sL:['upperarm_l_058'], eL:['lowerarm_l_059'], sR:['upperarm_r_0100'], eR:['lowerarm_r_0101'],
+        tL:['thigh_l_0150'], kL:['calf_l_0151'], fL:['foot_l_0152'], tR:['thigh_r_0143'], kR:['calf_r_0165'], fR:['foot_r_0166'] },
+      down:{ upperarm_l_058:['lowerarm_l_059',6], lowerarm_l_059:['hand_l_060',6], upperarm_r_0100:['lowerarm_r_0101',6], lowerarm_r_0101:['hand_r_0102',6] } },
     diamondhead:{ syn:'diamondhead', face:0, hMul:1.145, map:{ hips:['hips'], chest:['spine'], head:['neck'], sL:['upperArmL'], eL:['foreArmL'], sR:['upperArmR'], eR:['foreArmR'],
         tL:['thighL'], kL:['shinL'], fL:['footL'], tR:['thighR'], kR:['shinR'], fR:['footR'] }, down:{} },
     cannonbolt:{ curl:{ Chest_07:-1.0 }, face:Math.PI, map:{ hips:['Hips_01'], chest:['Spine_06'],
@@ -54,7 +55,11 @@ const GLBBODY=(function(){
         fl_t:['thighFL'], fl_k:['shinFL'], fl_f:['footFL'], fr_t:['thighFR'], fr_k:['shinFR'], fr_f:['footFR'],
         bl_t:['thighBL'], bl_k:['shinBL'], bl_f:['footBL'], br_t:['thighBR'], br_k:['shinBR'], br_f:['footBR'] },
       extra:['fl_t','fl_k','fl_f','fr_t','fr_k','fr_f','bl_t','bl_k','bl_f','br_t','br_k','br_f'], tail:['leafL','leafR'],
-      down:{ upperArmL:['foreArmL',28], foreArmL:[null,28], upperArmR:['foreArmR',28], foreArmR:[null,28] } }
+      down:{ upperArmL:['foreArmL',28], foreArmL:[null,28], upperArmR:['foreArmR',28], foreArmR:[null,28] } },
+    // Upgrade: skinned model (56 bones cut to 21). Faces +Z, T-posed arms that are relaxed down beside the body.
+    upgrade:{ face:Math.PI, map:{ hips:['bip_pelvis_00'], chest:['bip_spine_1_02'], head:['bip_neck_04'], sL:['bip_upperarm_L_08'], eL:['bip_lowerarm_L_09'], sR:['bip_upperarm_R_028'], eR:['bip_lowerarm_R_029'],
+        tL:['bip_hip_L_047'], kL:['bip_knee_L_048'], fL:['bip_foot_L_049'], tR:['bip_hip_R_051'], kR:['bip_knee_R_052'], fR:['bip_foot_R_053'] },
+      down:{ bip_upperarm_L_08:['bip_lowerarm_L_09',12], bip_lowerarm_L_09:['bip_hand_L_010',12], bip_upperarm_R_028:['bip_lowerarm_R_029',12], bip_lowerarm_R_029:['bip_hand_R_030',12] } }
   };
   const store={}, state={};          // store[kind] = parsed template; state[kind] = 'wait' | 'ok' | 'fail'
   const _qg=new THREE.Quaternion(), _q=new THREE.Quaternion(), _q2=new THREE.Quaternion(), _v=new THREE.Vector3(), _v2=new THREE.Vector3(), _m=new THREE.Matrix4(), _s=new THREE.Vector3();
@@ -255,6 +260,7 @@ const GLBBODY=(function(){
             side:src.side,transparent:src.transparent,opacity:src.opacity,alphaTest:src.alphaTest,skinning:!!o.isSkinnedMesh});
           if(src.emissiveMap) src.emissiveMap.encoding=THREE.LinearEncoding;
           if(kind==='xlr8'||kind==='cannonbolt') m.emissive.setHex(kind==='xlr8'?0x16293a:0x1a1608); // dark suits stay readable at night
+          if(kind==='upgrade'){ if(src.color.g>.8) m.emissive.copy(src.color).multiplyScalar(.5); else if(!src.map) m.emissive.setHex(0x050a08); }   // Upgrade: glowing green circuit lines on a black suit
           m.userData.baseEmis=m.emissive.getHex(); mats.set(src,m); parts.all.push(m); }
         if(kind==='echo_echo'&&o.isSkinnedMesh){ try{ paintEcho(o); m.vertexColors=true; m.color.set(0xffffff); m.map=null; m.needsUpdate=true; }catch(e){ console.warn('paintEcho',e); } }
         o.material=m; });
@@ -395,7 +401,7 @@ const GLBBODY=(function(){
     G.pivot.position.set(G.base.x*s, G.base.y*s+parts.hipY*(1-s), G.base.z*s);
   }
   // true top of the model (portrait framing: Box3.setFromObject cannot measure skinned meshes)
-  const PZ={four_arms:.68,heatblast:.68,xlr8:.92,echo_echo:.72,cannonbolt:1,jetray:.82,chromastone:.8,wildvine:.78};
+  const PZ={ben:.98,upgrade:1.1,four_arms:.68,heatblast:.68,xlr8:.92,echo_echo:.72,cannonbolt:1,jetray:.82,chromastone:.8,wildvine:.78};
   function topOf(parts){ return parts.glb?(parts.dims.total-.12):null; }
 
   return { init, attach, attachBall, setBall, apply, scaleBody, topOf, pz:k=>PZ[k]||.7, leanMul:k=>(CFG[k]&&CFG[k].leanMul!=null)?CFG[k].leanMul:1, ready:k=>state[k]==='ok', pending:k=>!!CFG[k]&&(state[k]==='wait'||state[k]===undefined), CFG };

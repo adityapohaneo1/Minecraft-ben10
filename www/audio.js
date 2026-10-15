@@ -203,11 +203,15 @@ const API={
   land(v){ if(sample('land',.5)) return; const k=Math.min(1,(v||8)/20); nz(.12+.1*k,.1+.12*k,420,90,'lowpass'); thump(70,.14,.1+.15*k); },
   breakBlock(){ nz(.16,.2,1800,300,'bandpass',.9); },
   place(){ thump(160,.08,.1); },
-  attack(){ if(sample('punch',.5)) return; if(sample('swoosh',.45,.9+Math.random()*.3)) return; nz(.13,.12,500,2000,'bandpass',1.4); },
+  // punch swing: ONLY a punch recording or the short synth whoosh. (It used to fall back to the 4 s 'swoosh' clip, which is the running/sprint sound.)
+  attack(){ if(sample('punch',.5,.95+Math.random()*.15)) return; nz(.11,.1,600,2200,'bandpass',1.4); thump(210,.05,.03); },
+  // projectile impact (fireball, seed bomb): the explosion recording at a lower level, pitch-varied and cut short so it stays a pop, not a 3 s boom
+  blast(vol){ const v=(vol==null?.6:vol); if(sample(Math.random()<.5?'explosion':'explosion2',v,.92+Math.random()*.2,1.5)) return; nz(.45,.3*v,1100,80,'lowpass',.6); thump(55,.3,.3*v); },
   heavyHit(){ if(sample('heavy',.9)) return; thump(80,.3,.4); nz(.18,.28,700,90,'lowpass',.8); beep(240,.06,'square',.07,90); },
   hit(){ if(sample('hit',.8)) return; thump(150,.1,.24); nz(.07,.2,2400,700,'bandpass',1.1); },
   transform(){ if(sample('mutate',.7)) return; beep(220,.35,'sine',.18,880); setTimeout(()=>beep(880,.2,'sine',.15,440),120); },
-  special(st){ if(st==='crystal'&&sample('crystal',.8)) return; if(st==='fire'&&sample('burning',.7)) return; beep(400,.3,'sawtooth',.18,700); nz(.25,.08,900,3000,'bandpass',2); },
+  special(st){ if(st==='pulse'){ thump(130,.28,.3); beep(520,.25,'sawtooth',.1,160); nz(.2,.1,2600,500,'bandpass',1.6); return; }
+    if(st==='crystal'&&sample('crystal',.8)) return; if(st==='fire'&&sample('burning',.7)) return; beep(400,.3,'sawtooth',.18,700); nz(.25,.08,900,3000,'bandpass',2); },
   // one blast of Echo Echo's sonic scream. While the scream button is held the looping recording already covers it (held=true) -> silence here.
   sonic(held){ if(held&&buffers.scream) return;
     if(buffers.scream){ const t=performance.now(); if(t-lastSonic<180) return; lastSonic=t; sample('scream',.6,1,.3); return; }   // short clip: a blast never keeps sounding after the button is released

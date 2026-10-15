@@ -274,3 +274,14 @@ instead of the box anatomy. Ben, Diamondhead, civilians and enemies still use th
 - Four Arms: no left-right spine sway; lower arms sit closer to the body so the upper arms don't clip them.
 - Echo Echo double jump: short scream recording only, then it stops.
 - Vehicle horn: sounds only while held (`Audio_.hornHold`).
+
+## v67 changes
+- **New Ben model:** the Fortnite "Ben Tennyson" skin replaces the old Ben. It is a real skinned model (bones cut from 279 to 27, outline shell removed, textures 1024 px) driven by the game's own animator like every other GLB body. Rebuild with `node tools/build-models.js` (sources in `models/`; the cleanup script is `tools/glb-prep/prep_skinned.mjs`).
+- **UPGRADE, the 10th alien** (black suit, green circuit lines, Omnitrix badge). Kit:
+  - **PULSE:** right arm held straight out along the aim line like a launcher (left forearm braces under it, recoil kick). Fires a green pulsing energy ball with expanding rings and an area blast + explosion sound.
+  - **EYE BLAST:** hold for a continuous stream. Each beam is only as wide as an eye, green, and pulses (width pulsing plus pulses racing down the beam). Drains energy, damages what it touches.
+  - **Jump + glide:** jump, then press JUMP again in the air to glide like a kite (arms and legs spread, belly-forward, slow sink, steady forward drift, steerable). Press JUMP again or land to stop.
+- **Chromastone:** all blasts now come from the TIP of his head (he bows forward so the spike points down the aim line). BLAST = tap for a bolt, HOLD for a continuous prismatic STREAM from the head tip. CHARGE also gathers and fires from the tip.
+- **Flight ceiling ("the roof"):** Heatblast / Jetray / Chromastone / Diamondhead can no longer climb forever. Climbing slows over the last 45 units and stops at `FLY_CEIL` (230; skyscrapers top out near 150). A cloud deck fades in as you approach it and an "ALTITUDE LIMIT" message shows.
+- **Sounds:** Heatblast fireballs and Wildvine seed bombs now play an explosion sound on contact with anything (`Audio_.blast`). Punching no longer plays the 4 s sprint "swoosh" clip (it was the fallback when there is no `punch.mp3`); it is now a short synth whoosh unless you add `sounds/punch.mp3`.
+- Not changed: XLR8 sprint VFX (needs the reference clip again).

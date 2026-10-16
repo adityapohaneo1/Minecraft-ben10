@@ -275,6 +275,13 @@ instead of the box anatomy. Ben, Diamondhead, civilians and enemies still use th
 - Echo Echo double jump: short scream recording only, then it stops.
 - Vehicle horn: sounds only while held (`Audio_.hornHold`).
 
+## v68 changes
+- v68b: Superman idle now Chromastone only (other flyers reverted); Upgrade's fall pose = glide pose (pose only); XLR8: 3-stage run stride (reach / gathered / mirrored reach) and all old sprint VFX replaced by tiny blue wind streaks.
+- Upgrade: eye beam now fires from the green eye circle on his head, full eye diameter; body leans forward while eye-blasting.
+- Upgrade: pulse arm raised to ~95 deg and blasts spawn from the hand; glide VFX removed.
+- Chromastone: every rapid tap fires from the crest tip immediately.
+- Flying idle is now a Superman pose (arms down/out, one leg trailing).
+
 ## v67 changes
 - **New Ben model:** the Fortnite "Ben Tennyson" skin replaces the old Ben. It is a real skinned model (bones cut from 279 to 27, outline shell removed, textures 1024 px) driven by the game's own animator like every other GLB body. Rebuild with `node tools/build-models.js` (sources in `models/`; the cleanup script is `tools/glb-prep/prep_skinned.mjs`).
 - **UPGRADE, the 10th alien** (black suit, green circuit lines, Omnitrix badge). Kit:

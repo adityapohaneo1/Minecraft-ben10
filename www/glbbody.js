@@ -57,7 +57,7 @@ const GLBBODY=(function(){
       extra:['fl_t','fl_k','fl_f','fr_t','fr_k','fr_f','bl_t','bl_k','bl_f','br_t','br_k','br_f'], tail:['leafL','leafR'],
       down:{ upperArmL:['foreArmL',28], foreArmL:[null,28], upperArmR:['foreArmR',28], foreArmR:[null,28] } },
     // Upgrade: skinned model (56 bones cut to 21). Faces +Z, T-posed arms that are relaxed down beside the body.
-    upgrade:{ face:Math.PI, map:{ hips:['bip_pelvis_00'], chest:['bip_spine_1_02'], head:['bip_neck_04'], sL:['bip_upperarm_L_08'], eL:['bip_lowerarm_L_09'], sR:['bip_upperarm_R_028'], eR:['bip_lowerarm_R_029'],
+    upgrade:{ eye:{ bone:'bip_head_05', p:[0,2.137,.115], d:.106 }, face:Math.PI, map:{ hips:['bip_pelvis_00'], chest:['bip_spine_1_02'], head:['bip_neck_04'], sL:['bip_upperarm_L_08'], eL:['bip_lowerarm_L_09'], sR:['bip_upperarm_R_028'], eR:['bip_lowerarm_R_029'],
         tL:['bip_hip_L_047'], kL:['bip_knee_L_048'], fL:['bip_foot_L_049'], tR:['bip_hip_R_051'], kR:['bip_knee_R_052'], fR:['bip_foot_R_053'] },
       down:{ bip_upperarm_L_08:['bip_lowerarm_L_09',12], bip_lowerarm_L_09:['bip_hand_L_010',12], bip_upperarm_R_028:['bip_lowerarm_R_029',12], bip_lowerarm_R_029:['bip_hand_R_030',12] } }
   };
@@ -194,6 +194,7 @@ const GLBBODY=(function(){
     const bb=skinnedBounds(sc);
     const hb=bones[C.map.hips[0]]; hb.updateWorldMatrix(true,false); const hp=new THREE.Vector3().setFromMatrixPosition(hb.matrixWorld);
     const my=(C.minY!=null)?C.minY:bb.min.y; store[kind]={ scene:sc, height:bb.max.y-my, minY:my, cx:hp.x, cz:hp.z };
+    if(C.eye){ const eb=bones[C.eye.bone]; if(eb){ sc.updateMatrixWorld(true); eb.updateWorldMatrix(true,false); store[kind].eyeL=eb.worldToLocal(new THREE.Vector3(C.eye.p[0],C.eye.p[1],C.eye.p[2])); store[kind].eyeD=C.eye.d; store[kind].eyeBone=C.eye.bone; } }
   }
 
   function load(kind,buf){
@@ -293,6 +294,7 @@ const GLBBODY=(function(){
       if(C.extra) C.extra.forEach(k=>{ G.t[k]=new THREE.Quaternion(); });
       // success: only now hide the box anatomy (keeping the cannonbolt roll shell) and mount the GLB body
       g.traverse(o=>{ if(!o.isMesh) return; for(let p=o;p;p=p.parent){ if(p===shellRoot) return; if(p===g) break; } o.visible=false; });
+      if(T.eyeL){ G.eyeL=T.eyeL.clone(); G.eyeD=T.eyeD; G.eyeB=byName[T.eyeBone]; }
       g.add(pivot); parts.glb=G; apply(parts,0); if(kind==='cannonbolt') attachBall(parts);
       return true;
     }catch(e){ console.warn('GLB attach '+kind+': '+e.message); return false; }

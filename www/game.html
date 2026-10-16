@@ -291,7 +291,7 @@
   #hud #energy-fill{background:linear-gradient(90deg,#39ff8a 0%,var(--theme) 100%);}
   #omni-dial{left:250px;}
 
-  #minimap{position:absolute;right:max(12px,env(safe-area-inset-right,12px));top:max(8px,env(safe-area-inset-top,8px));width:80px;height:80px;border-radius:50%;border:2px solid var(--theme);background:#04120c;box-shadow:0 0 10px rgba(0,0,0,.6);pointer-events:none;}
+  #minimap{position:absolute;right:max(12px,env(safe-area-inset-right,12px));top:max(8px,env(safe-area-inset-top,8px));width:80px;height:80px;border-radius:50%;border:2px solid var(--theme);background:#04120c;box-shadow:0 0 10px rgba(0,0,0,.6);pointer-events:auto;cursor:pointer;touch-action:manipulation;}
 
   #perf-hud{position:absolute;left:14px;top:132px;font:9px/1.25 monospace;color:#9dffc8;background:rgba(0,10,6,.7);padding:4px 6px;border-radius:3px;pointer-events:none;white-space:pre;display:none;z-index:30;}
   #squad-panel{right:104px !important;top:max(12px,env(safe-area-inset-top,12px)) !important;}
@@ -1882,6 +1882,13 @@ function animateRig(parts,dt,inp){
       // straight glide (reference clip): body in one straight line, wings held out flat and still - no flapping
       { const fl=Math.sin(A.t*(inp.moving?3.2:2.2)); P.sL.z=-1.5-.14*fl; P.sR.z=1.5+.14*fl; } P.sL.x=0; P.sR.x=0; P.sL.y=0; P.sR.y=0; P.eL=.02; P.eR=.02;
       P.tLx=0; P.tRx=0; P.kL=0; P.kR=0; P.fL=.55; P.fR=.55; P.chX=0; P.hdX=inp.moving?.55:0; P.hipsY=0;
+    } else if(!inp.moving&&id==='chromastone'){ // Superman hovering in place (Chromastone only) (sketch): body upright, arms down and a little out from the sides, one leg straight, the other knee bent with the foot trailing back, slow float
+      const bob=Math.sin(A.t*1.9), sw=Math.sin(A.t*1.3);
+      P.hipsY=bob*.05; P.chX=.02; P.hdX=-.04; P.chZ=sw*.015;
+      P.sL.x=.08+sw*.04; P.sR.x=.08-sw*.04; P.sL.z=-.5; P.sR.z=.5; P.eL=.12; P.eR=.12;
+      P.tLx=.04; P.kL=.1; P.fL=.15;                 // straight leg
+      P.tRx=-.18; P.kR=1.15+bob*.05; P.fR=.35;      // bent leg, foot trailing behind
+      P.tLz=-.03; P.tRz=.05;
     } else { // Superman: arms locked forward over the head, legs streamed behind, slight wobble
       const up=inp.moving?2.85:.55; P.sL.x=up; P.sR.x=up; P.eL=.1; P.eR=.1; P.sL.z=-.08; P.sR.z=.08;
       P.tLx=.12+Math.sin(A.t*9)*.14; P.tRx=.12-Math.sin(A.t*9)*.14; P.kL=.25; P.kR=.25; P.fL=.6; P.fR=.6; P.chX=inp.moving?-.05:.03; P.hdX=inp.moving?.35:0;
@@ -1925,6 +1932,16 @@ function animateRig(parts,dt,inp){
     P.eL = _lerp(_lerp(.32+.12*mm*Math.max(0,-sL),.4,sp),.14,rn); P.eR = _lerp(_lerp(.32+.12*mm*Math.max(0,-sR),.4,sp),.14,rn);
     P.sL.z = -.38*(1-sp)*(1-rn) - .46*rn; P.sR.z = .38*(1-sp)*(1-rn) + .46*rn;
     P.chX += -.3*rn; P.hdX += .32*rn; P.tLx*=1+.2*rn; P.tRx*=1+.2*rn; P.kL += .22*rn; P.kR += .22*rn; P.chY*=.6;
+    // 3-STAGE RUN (reference image): stride A (one leg reaching, other kicked back) -> mid (legs gathered under the body) -> stride B (mirrored) -> mid ...
+    if(rn>.02){ const w=Math.sin(ph), st=Math.sign(w)*Math.pow(Math.abs(w),.55), fa=Math.max(0,st), ba=Math.max(0,-st), md=1-Math.abs(st);
+      const tl=.85*fa-.65*ba, tr=.85*ba-.65*fa, kl=.35*fa+1.35*ba+.95*md, kr=.35*ba+1.35*fa+.95*md;
+      P.tLx=_lerp(P.tLx,tl,rn); P.tRx=_lerp(P.tRx,tr,rn); P.kL=_lerp(P.kL,kl,rn); P.kR=_lerp(P.kR,kr,rn);
+      P.fL=_lerp(P.fL,.3-.2*fa+.4*ba,rn); P.fR=_lerp(P.fR,.3-.2*ba+.4*fa,rn);
+      // upper body (reference): arms stay swept back but swap with the stride - the arm on the reaching-leg side comes forward and bends, the other streams far back, straight; torso pitched hard forward and counter-twisting
+      P.sL.x=_lerp(P.sL.x,-1.45+.7*st,rn); P.sR.x=_lerp(P.sR.x,-1.45-.7*st,rn);
+      P.eL=_lerp(P.eL,.12+.55*fa,rn); P.eR=_lerp(P.eR,.12+.55*ba,rn);
+      P.sL.z=_lerp(P.sL.z,-.4-.2*ba,rn); P.sR.z=_lerp(P.sR.z,.4+.2*fa,rn);
+      P.chX+=-.22*rn; P.hdX+=.22*rn; P.chY=_lerp(P.chY,-.3*st,rn); P.hipsRY=_lerp(P.hipsRY,.2*st,rn); P.hipsY-=.04*md*rn; }
     P.chZ += 0; P.hipsRZ += 0;
   }
   if(inp.fa && grounded && !inp.flying && !inp.swimming){ // Four Arms (reference clips): heavy gorilla build - hunched forward, wide planted legs, big arms hang low and swing with the shoulders; on a run they flare out and pump
@@ -1972,7 +1989,7 @@ function animateRig(parts,dt,inp){
     P.sL.z=_lerp(P.sL.z,-1.45+fl,g); P.sR.z=_lerp(P.sR.z,1.45-fl,g); P.sL.x=_lerp(P.sL.x,.25,g); P.sR.x=_lerp(P.sR.x,.25,g); P.sL.y=_lerp(P.sL.y,0,g); P.sR.y=_lerp(P.sR.y,0,g); P.eL=_lerp(P.eL,.08,g); P.eR=_lerp(P.eR,.08,g);
     P.tLz=_lerp(P.tLz,-.55,g); P.tRz=_lerp(P.tRz,.55,g); P.tLx=_lerp(P.tLx,-.25,g); P.tRx=_lerp(P.tRx,-.25,g); P.kL=_lerp(P.kL,.12,g); P.kR=_lerp(P.kR,.12,g);
     P.hdX+=.55*g; P.chX+=.1*g; }
-  if(inp.upEye&&!inp.flying){ P.hdX+=.12; P.chX+=-.1; P.sL.x=_lerp(P.sL.x,-.35,.7); P.sR.x=_lerp(P.sR.x,-.35,.7); P.sL.z=-.28; P.sR.z=.28; P.eL=.5; P.eR=.5; }   // eye blast: head forward, fists drawn back
+  if(inp.upEye&&!inp.flying){ P.hdX+=.3; P.chX+=-.42; P.hipsZ-=.04; P.sL.x=_lerp(P.sL.x,-.6,.8); P.sR.x=_lerp(P.sR.x,-.6,.8); P.sL.z=-.3; P.sR.z=.3; P.eL=.6; P.eR=.6; P.tLx=_lerp(P.tLx,.35,.7); P.tRx=_lerp(P.tRx,-.3,.7); P.kL=_lerp(P.kL,.4,.7); P.kR=_lerp(P.kR,.35,.7); }   // eye blast: whole body leans into it, head forward   // eye blast: head forward, fists drawn back
   // ---- special stances ----
   if(inp.superT>.2 && grounded && !inp.flying){ // XLR8 sprint: arms swept back, deep forward lean, driving knees
     const k=_ez(inp.superT); P.sL.x=_lerp(P.sL.x,-1.5,k); P.sR.x=_lerp(P.sR.x,-1.5,k); P.eL=_lerp(P.eL,.35,k); P.eR=_lerp(P.eR,.35,k); P.chX+=-.35*k; P.hdX+=.3*k; P.sL.z=-.46; P.sR.z=.46;
@@ -2027,11 +2044,11 @@ function animateRig(parts,dt,inp){
     P.sL.x=_lerp(P.sL.x,1.71+(inp.aimP||0)+kick,c); P.sR.x=_lerp(P.sR.x,1.71+(inp.aimP||0)+kick,c); P.sL.y=.18; P.sR.y=-.18; P.eL=_lerp(P.eL,.12,c); P.eR=_lerp(P.eR,.12,c);
     P.chX+=-.12*c-kick*.4; P.hdX+=.1*c; }
   else if(false){ }
-  if(inp.up>0){ // Upgrade PULSE: right arm straight out along the aim line like a rocket launcher, left forearm braces under it, body rocks back with the recoil
-    const c=_ez(Math.min(1,inp.up)), ap=THREE.MathUtils.clamp(inp.aimP||0,-.9,.9), kick=(inp.upKick||0)*.35;
-    P.sR.x=_lerp(P.sR.x,1.71+ap+kick,c); P.sR.y=_lerp(P.sR.y,-.12,c); P.sR.z=_lerp(P.sR.z,.05,c); P.eR=_lerp(P.eR,.05,c);
-    P.sL.x=_lerp(P.sL.x,1.25,c); P.sL.y=_lerp(P.sL.y,.5,c); P.eL=_lerp(P.eL,1.3,c);
-    P.chY+=-.3*c; P.chX+=-.1*c+kick*.5; P.hdX+=.1*c;
+  if(inp.up>0){ // Upgrade PULSE: right arm raised ~95 deg from his side (0 = arm at attention, 90 = straight out like Iron Man), aimed at the crosshair; left arm braces; recoil kick
+    const c=_sm(Math.min(1,inp.up*3)), ap=THREE.MathUtils.clamp(inp.aimP||0,-.9,.9), kick=(inp.upKick||0)*.3;   // full pose within the first third of the hold, then eases out
+    P.sR.x=_lerp(P.sR.x,1.72+ap*.3+kick,c); P.sR.y=_lerp(P.sR.y,-.05,c); P.sR.z=_lerp(P.sR.z,.03,c); P.eR=_lerp(P.eR,.03,c);
+    P.sL.x=_lerp(P.sL.x,.55,c); P.sL.y=_lerp(P.sL.y,.2,c); P.eL=_lerp(P.eL,.9,c);
+    P.chY+=-.25*c; P.chX+=-.05*c+kick*.5; P.hdX+=.05*c;
     if(!inp.flying&&!inp.glide){ P.tLx=_lerp(P.tLx,.3,c); P.tRx=_lerp(P.tRx,-.25,c); P.kL=_lerp(P.kL,.4,c); P.kR=_lerp(P.kR,.3,c); P.hipsY-=.06*c; } }
   if(inp.cs>0){ // Chromastone: he bows forward so the spike on his head points down the aim line; arms flare back for balance, body trembles while charging/streaming
     const c=_ez(Math.min(1,inp.cs)), ap=THREE.MathUtils.clamp(inp.aimP||0,-.9,.9), tr=Math.sin(A.t*46)*.02*Math.max(inp.csChg||0,inp.csStream?.6:0);
@@ -2267,7 +2284,7 @@ const ACT={
  fly:{label:()=>player.flying?'LAND':'FLY',cost:0,cd:0.3,run:()=>doJump()},
  burn:{label:'BURN',cost:25,cd:6,run:()=>{player.boostT=2.5;statusText('AFTERBURNER');}},
  cblast:{label:'CHARGE',aim:true,hold:v=>{ if(v){ if(player.energy>=8&&!player.chgHeld){ player.chgHeld=true; player.chgT=0; } } else if(player.chgHeld){ player.chgHeld=false; releaseBlast(); } },cost:0,cd:0},
- cblt:{label:'BLAST',aim:true,hold:v=>{ player.csBlastHeld=v; player.csBlastT=v?-.12:0; if(!v&&player._csQuick){ player._csQuick=false; } },cost:0,cd:0},
+ cblt:{label:'BLAST',aim:true,hold:v=>{ player.csBlastHeld=v; player.csBlastT=v?-.12:0; if(v) csTap(); else if(player._csQuick){ player._csQuick=false; } },cost:0,cd:0},
  dome:{label:'ENERGY DOME',cost:35,cd:10,run:()=>domeStart()},
  eyes:{label:'EYE BLAST',aim:true,hold:v=>{ player.eyeHeld=v; player.eyeT=0; },cost:0,cd:0},
  pulse:{label:'PULSE',aim:true,cost:16,cd:.75,run:()=>upPulse()},
@@ -3324,42 +3341,21 @@ let lastFov = BASE_FOV, speedShakeT = 0, xtPrevS = 0, xtDust = 0, xtRock = 0, XT
 
 // XLR8 (VFX pack): three thin ribbon trails sampled from his hands + back (path-following), light streaks at top speed, brake dust at the feet.
 function xlrFx(dt,k){
-  // XLR8 sprint VFX = the reference clip: rock / asphalt chunks kicked up and flung around him, plus edge motion blur that deepens with speed.
-  // (the old light trails, speed-streak lines and dust slides are gone)
-  const on=player.form.id==='xlr8'&&!player.driving&&player.alive;
+  // XLR8 sprint VFX: ONLY tiny, thin blue wind streaks that stream past him (no rocks, ghosts, ribbons or blur).
+  const on=player.form.id==='xlr8'&&!player.driving&&player.alive&&!player.flying;
+  if(!XS){ XS={pool:[],t:0,geo:new THREE.BoxGeometry(1,1,1)}; }
+  if(XB){ XB.style.opacity='0'; }
+  if(xGh){ xGh.forEach(g=>{ g.on=false; g.root.visible=false; }); }
   const fw=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw));
-  const feet=new THREE.Vector3(player.pos.x,player.pos.y-.9,player.pos.z);
-  if(on&&player.onGround&&!player.flying&&(k>.12||(Math.hypot(moveInput.x,moveInput.y)>.3))){
-    xtRock+=dt*(6+22*k); while(xtRock>1){ xtRock-=1; const a=Math.random()*6.283;
-      VFX.particle(Math.random()<.5?'dirt_01':'dirt_02',feet.clone().add(new THREE.Vector3(Math.cos(a)*.4,.1,Math.sin(a)*.4)),
-        {size:.12+Math.random()*.14,sizeEnd:.06,life:.7+Math.random()*.6,add:false,tint:Math.random()<.5?0x6b5a48:0x4a4540,alpha:1,grav:14,drag:.4,
-         vel:new THREE.Vector3(-fw.x*(3+9*k)+(Math.random()-.5)*5,3+Math.random()*(4+5*k),-fw.z*(3+9*k)+(Math.random()-.5)*5)}); } }
-  // ---- afterimages: translucent blue copies of HIS model (the GLB body), frozen in the pose he had a moment ago, fading out fast ----
-  const live=player.model&&player.model.userData.parts, LG=live&&live.glb, sprint=on&&player.onGround&&!player.flying&&k>.3&&LG;
-  if(LG&&!xGh){
-    xGh=[]; for(let i=0;i<5;i++){
-      const root=THREE.SkeletonUtils.clone(LG.pivot), bones=[]; root.traverse(o=>{ if(o.isBone) bones.push(o); });
-      const mk=sk=>new THREE.MeshBasicMaterial({color:0x4fc3ff,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,fog:false,skinning:sk});
-      const mS=mk(true), mP=mk(false);
-      root.traverse(o=>{ if(o.isMesh){ o.material=o.isSkinnedMesh?mS:mP; o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false; } });
-      root.visible=false; scene.add(root); xGh.push({root,bones,mats:[mS,mP],t:0,max:.3,on:false}); }
-  }
-  if(xGh&&sprint){ xGhT+=dt; if(xGhT>.055){ xGhT=0; const gh=xGh.find(g=>!g.on)||xGh.reduce((a,b)=>a.t<b.t?a:b);
-      LG.pivot.updateWorldMatrix(true,false); LG.pivot.matrixWorld.decompose(gh.root.position,gh.root.quaternion,gh.root.scale);
-      for(let i=0;i<gh.bones.length&&i<LG.bones.length;i++){ const lb=LG.bones[i], gb=gh.bones[i]; gb.position.copy(lb.position); gb.quaternion.copy(lb.quaternion); gb.scale.copy(lb.scale); }
-      gh.t=gh.max=.12+.2*Math.min(1,k); gh.on=true; gh.root.visible=true; gh.root.updateMatrixWorld(true); } }
-  if(xGh) for(const gh of xGh){ if(!gh.on) continue; gh.t-=dt; if(gh.t<=0){ gh.on=false; gh.root.visible=false; gh.mats.forEach(m=>m.opacity=0); } else { const o=.5*(gh.t/gh.max); gh.mats.forEach(m=>m.opacity=o); } }
-  // ---- blue streaks: short bright ribbons streaming off his blade arms and back ----
-  if(!xHT) xHT=[0,1,2].map(()=>VFX.trail('trace_01',{width:.16,life:.28,step:.3,n:12,tint:0x4fc3ff}));
-  if(sprint&&live.handL&&live.handR){ const pl=new THREE.Vector3(), pr=new THREE.Vector3(), pb=new THREE.Vector3(); live.handL.getWorldPosition(pl); live.handR.getWorldPosition(pr); (live.chest||live.hips).getWorldPosition(pb);
-    const it=Math.min(1,k*1.4); VFX.trailPush(xHT[0],pl,it); VFX.trailPush(xHT[1],pr,it); VFX.trailPush(xHT[2],pb.addScaledVector(fw,-.3),it*.8); }
-  else xHT.forEach(t=>VFX.trailClear(t));
-  const sv=on&&!player.flying;
-  if(!XB){
-    XB=document.createElement('div'); XB.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:5;opacity:0;transition:opacity .15s;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);-webkit-mask-image:radial-gradient(circle at 50% 50%,transparent 35%,#000 95%);mask-image:radial-gradient(circle at 50% 50%,transparent 35%,#000 95%)'; document.body.appendChild(XB);
-  }
-  XB.style.opacity=(sv&&k>.15)?Math.min(1,(k-.15)*1.6).toFixed(2):'0';
-  { const bl=(1.5+6*Math.min(1,k)).toFixed(1); if(XB._bl!==bl){ XB._bl=bl; XB.style.webkitBackdropFilter=XB.style.backdropFilter='blur('+bl+'px)'; } }
+  const sp=Math.hypot(camDyn.vx,camDyn.vz), kk=on?Math.min(1,Math.max(k,(sp-3)/12)):0;
+  if(kk>.08){ XS.t+=dt*(40+90*kk); while(XS.t>1){ XS.t-=1;
+    let o=XS.pool.find(q=>!q.on); if(!o){ if(XS.pool.length>=70) break; const m=new THREE.Mesh(XS.geo,new THREE.MeshBasicMaterial({color:0x5cc8ff,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,fog:false})); m.frustumCulled=false; m.visible=false; scene.add(m); o={m,on:false,t:0,max:.3,len:1,v:0}; XS.pool.push(o); }
+    const a=Math.random()*6.283, rad=.5+Math.random()*1.5, ph=Math.random();
+    o.m.position.set(player.pos.x+Math.cos(a)*rad+fw.x*(Math.random()*1.2-.2), player.pos.y-.9+.1+ph*2.1, player.pos.z+Math.sin(a)*rad+fw.z*(Math.random()*1.2-.2));
+    o.m.rotation.set(0,player.yaw,0); o.len=.35+Math.random()*.55+.5*kk; o.m.scale.set(.012+Math.random()*.01,.012+Math.random()*.01,o.len); o.m.material.color.setHex(Math.random()<.35?0xd4f2ff:0x4db8ff);
+    o.v=4+10*kk; o.t=o.max=.18+Math.random()*.2; o.dx=-fw.x; o.dz=-fw.z; o.on=true; o.m.visible=true; } }
+  for(const o of XS.pool){ if(!o.on) continue; o.t-=dt; if(o.t<=0){ o.on=false; o.m.visible=false; continue; }
+    o.m.position.x+=o.dx*o.v*dt; o.m.position.z+=o.dz*o.v*dt; o.m.material.opacity=.85*Math.min(1,o.t/o.max*1.6); }
 }
 // Per-form VFX: flight exhaust/trails (Heatblast, Jetray, Chromastone), Cannonbolt roll dust, landing/takeoff puffs.
 let AUR=null, ffR=0, FT=null, ffWasGround=true, ffWasFly=false, ffVy=0, ffT=0;
@@ -3721,10 +3717,12 @@ function csAimPitch(){ const o=player.pos.clone().add(new THREE.Vector3(0,.45,0)
 // Chromastone fires from the TIP of his head (the crystal spike): he bows forward so the spike points down the aim line.
 const _cst=new THREE.Vector3();
 function csHeadTip(out){
+  // the crest tip of his REAL head: the GLB 'neck' bone (it carries the head) plus the measured offset to the tip of the forward-swept crest (0, +.377 up, .146 forward in model units)
   const m=player.model, pa=m&&m.userData.parts; if(!pa||!pa.head){ return out.copy(player.pos).add(new THREE.Vector3(0,1.4,0)); }
   m.updateMatrixWorld(true);
-  const tl=(pa.dims.total-.12)-(pa.hipY+.12+pa.dims.torsoH+(pa.cfg.neck||.1));   // spike tip above the rig head pivot (the GLB is fitted to total-.12)
-  return pa.head.localToWorld(out.set(0,Math.max(.25,tl),0));
+  const G=pa.glb; if(G){ const nb=G._cn!==undefined?G._cn:(G._cn=G.bones.find(b=>b.name==='neck')||null); if(nb){ nb.updateWorldMatrix(true,false); return nb.localToWorld(out.set(0,.377,-.146)); } }
+  const tl=(pa.dims.total-.12)-(pa.hipY+.12+pa.dims.torsoH+(pa.cfg.neck||.1));
+  return pa.head.localToWorld(out.set(0,Math.max(.25,tl),-.1));
 }
 function csQuick(st){ if(player.energy<8) return false; player.energy-=8; const d=aimDirFrom(st);
   spawnProjectile(player,CS_COL,16,44,false,'energy',{explicitDir:d,explicitFrom:st,size:1}); return true; }
@@ -3738,8 +3736,13 @@ function aimRay(from,dir,maxLen){
   return {len,hit,hitEn,hitPr};
 }
 // BLAST button: tap = one bolt from the head tip, HOLD = continuous prismatic stream from the head tip (drains energy)
-const CSS={b:null,t:0,fired:false,fo:new THREE.Vector3(),to:new THREE.Vector3(),tick:0,spark:0};
+const CSS={b:null,t:0,fired:false,last:0,fo:new THREE.Vector3(),to:new THREE.Vector3(),tick:0,spark:0};
 function csStreamOff(){ if(CSS.b){ CSS.b.forEach(v=>VFX.stop(v)); CSS.b=null; } }
+function csTap(){   // every press fires one bolt right away (rapid tapping = rapid bolts), always from the crest tip
+  const now=performance.now(); CSS.t=0; if(now-CSS.last<110){ CSS.fired=true; return; } CSS.last=now;
+  const st=csHeadTip(new THREE.Vector3()); st.addScaledVector(aimDirFrom(st),.15);
+  if(csQuick(st)){ player.csT=1; VFX.prismBurst(st,.25); CSS.fired=true; }
+}
 function updateCsBlast(dt){
   if(!player.csBlastHeld||player.form.id!=='chromastone'||!player.alive){ player.csBlastHeld=false; csStreamOff(); CSS.t=0; CSS.fired=false; return; }
   CSS.t+=dt; const tip=csHeadTip(_cst);
@@ -3821,7 +3824,7 @@ function updateChromaCharge(dt){
 const _eyeV=new THREE.Vector3();
 // Continuous twin eye beams (Superman-style): live while held, follow the eyes + aim, end exactly at the collision point.
 const EYE={b:null,from:[new THREE.Vector3(),new THREE.Vector3()],to:[new THREE.Vector3(),new THREE.Vector3()],t:0,spark:0,glow:0};
-function eyeOff(){ if(EYE.b){ EYE.b.forEach(v=>VFX.stop(v)); EYE.b=null; } EYE.glow=0; }
+function eyeOff(){ if(EYE.b){ EYE.b.forEach(v=>VFX.stop(v)); EYE.b=null; } EYE.glow=0; if(EYE.cy){ scene.remove(EYE.cy.g); EYE.cy.g.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); }); EYE.cy=null; } }
 function updateEyes(dt){
   const UPG=player.form.id==='upgrade';
   if(!player.eyeHeld||(player.form.id!=='jetray'&&!UPG)||!player.alive||player.energy<=0){ player.eyeHeld=false; eyeOff(); return; }
@@ -3841,12 +3844,10 @@ function updateEyes(dt){
   EYE.len=len;
   // offsets are stored relative to the player so the beam stays glued to the eyes even at flying speed (player moves after this runs)
   for(let i=0;i<2;i++){ EYE.from[i].copy(eyeW[i]).sub(player.pos); EYE.to[i].copy(mid).addScaledVector(dir,len+.8).sub(player.pos); }
-  if(!EYE.b&&UPG){ EYE.b=[]; EYE.w=[]; EYE.ph=0;
-    for(let i=0;i<2;i++){   // Upgrade: beam is only as wide as an eye, green, and it pulses
-      const F=f=>f.copy(player.pos).add(EYE.from[i]), T=t=>t.copy(player.pos).add(EYE.to[i]);
-      EYE.b.push(VFX.beam('trace_06',F,T,.42,{up:true,vr:[.3,.7],dur:.35,tint:UP_COL,alpha:.95})); EYE.w.push(.42);
-      EYE.b.push(VFX.beam('trace_06',F,T,.18,{up:true,vr:[.3,.7],dur:.3,tint:0xeaffd8,alpha:1})); EYE.w.push(.18);
-      EYE.b.push(VFX.attach('flare_01',f=>f.pos.copy(player.pos).add(EYE.from[i]),{size:.4,dur:.4,add:true,tint:UP_COL})); EYE.w.push(0); } }
+  if(!EYE.b&&UPG){ EYE.b=[]; EYE.w=[]; EYE.ph=0;   // Upgrade has ONE eye (the green ring on his head): a solid beam exactly as wide as that ring
+    EYE.b.push(VFX.attach('flare_01',f=>f.pos.copy(player.pos).add(EYE.from[0]),{size:upEyeD()*3,dur:.4,add:true,tint:UP_COL})); EYE.w.push(0);
+    EYE.b.push(VFX.attach('flare_01',f=>f.pos.copy(player.pos).add(EYE.to[0]),{size:upEyeD()*4,dur:.4,add:true,tint:UP_COL})); EYE.w.push(0); }
+  if(UPG){ upEyeBeam(EYE.from[0].clone().add(player.pos),EYE.to[0].clone().add(player.pos),dt); }
   if(!EYE.b){ EYE.b=[];
     for(let i=0;i<2;i++){
       const F=f=>f.copy(player.pos).add(EYE.from[i]), T=t=>t.copy(player.pos).add(EYE.to[i]);
@@ -3856,7 +3857,7 @@ function updateEyes(dt){
     EYE.b.push(VFX.attach('flare_01',f=>f.pos.copy(player.pos).add(EYE.to[0]).lerp(f.pos.copy(player.pos).add(EYE.to[1]),.5),{size:1.1,dur:.4,add:true,tint:0xff5a30})); }
   if(UPG&&EYE.w){ EYE.ph+=dt; const pl=1+.4*Math.sin(EYE.ph*24);   // pulsing width + pulses racing down the beam
     EYE.b.forEach((v,i)=>{ if(v&&v.str&&EYE.w[i]) v.str.width=EYE.w[i]*pl; });
-    EYE.pt=(EYE.pt||0)-dt; if(EYE.pt<=0){ EYE.pt=.07; for(let i=0;i<2;i++){ const a=player.pos.clone().add(EYE.from[i]); VFX.particle('circle_01',a,{size:.25,sizeEnd:.55,life:.22,add:true,tint:UP_COL,alpha:.8,vel:dir.clone().multiplyScalar(70)}); } } }
+    EYE.pt=(EYE.pt||0)-dt; if(EYE.pt<=0){ EYE.pt=.07; { const ED=upEyeD(), a=player.pos.clone().add(EYE.from[0]); VFX.particle('circle_01',a,{size:ED*1.2,sizeEnd:ED*2.2,life:.22,add:true,tint:UP_COL,alpha:.8,vel:dir.clone().multiplyScalar(70)}); } } }
   // damage + impact response at the real collision point
   EYE.t-=dt; if(hit){ EYE.spark-=dt; if(EYE.spark<=0){ EYE.spark=.06; VFX.sparks(hit,3,6,UPG?UP_COL:0xff9a60,.22,.3); } }
   if(EYE.t<=0){ EYE.t=.1;
@@ -3867,28 +3868,45 @@ function updateEyes(dt){
    UPGRADE (10th alien): PULSE blast (arm out like a launcher), green pulsing EYE stream, JUMP + GLIDE
 ========================================================================= */
 const UP_COL=0x5dff1a;
-const _ub1=new THREE.Vector3(), _uq=new THREE.Quaternion();
+const _ub1=new THREE.Vector3(), _ub2=new THREE.Vector3(), _uq=new THREE.Quaternion();
 function upBone(key,out){   // world position of one of his real GLB bones; falls back to the rig pivot
   const pa=player.model&&player.model.userData&&player.model.userData.parts; if(!pa) return null;
   const G=pa.glb; if(G){ const c=G._ub||(G._ub={}); let b=c[key]; if(b===undefined){ b=G.bones.find(x=>x.name.indexOf(key)>=0)||null; c[key]=b; } if(b){ b.getWorldPosition(out); return out; } }
   const pv=key==='hand_R'?pa.handR:key==='hand_L'?pa.handL:pa.head; if(!pv) return null; pv.getWorldPosition(out); return out;
 }
-const UP_EYE=window.__upEye||[.075,-.16,.13];       // model units: half eye spacing, drop below the head bone, forward
+// Upgrade's single eye = the green ring on his head (point stored in head-bone space by glbbody.js). Returns [p,p].
+const _upY=new THREE.Vector3(0,1,0), _upD=new THREE.Vector3();
+function upEyeBeam(a,b,dt){   // solid pulsing beam: outer green tube = eye diameter, bright core inside
+  if(!EYE.cy){ const g=new THREE.Group(), geo=new THREE.CylinderGeometry(1,1,1,14,1,true);
+    const o=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:UP_COL,transparent:true,opacity:.92,depthWrite:false,fog:false,side:THREE.DoubleSide}));
+    const c=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0xeaffd0,transparent:true,opacity:1,depthWrite:false,fog:false,side:THREE.DoubleSide}));
+    o.frustumCulled=c.frustumCulled=false; g.add(o,c); g.renderOrder=4; scene.add(g); EYE.cy={g,o,c}; }
+  const L=Math.max(.05,a.distanceTo(b)), ED=upEyeD(), k=1+.14*Math.sin((EYE.ph||0)*30);
+  _upD.copy(b).sub(a).normalize(); const g=EYE.cy.g; g.position.copy(a).addScaledVector(_upD,L/2); g.quaternion.setFromUnitVectors(_upY,_upD);
+  EYE.cy.o.scale.set(ED/2*k,L,ED/2*k); EYE.cy.c.scale.set(ED*.2*k,L,ED*.2*k);
+}
+function upEyeD(){ const pa=player.model&&player.model.userData.parts, G=pa&&pa.glb; return (G&&G.eyeD?G.eyeD*G.k*player.model.scale.x:.13); }
 function upEyePos(){
-  const m=player.model, pa=m.userData.parts, G=pa.glb, sc=(G?G.k:1)*m.scale.x; const hb=upBone('head_0',_ub1.set(0,0,0));
-  if(!hb) return [player.pos.clone(),player.pos.clone()];
-  pa.head.getWorldQuaternion(_uq);
-  return [-1,1].map(sg=>new THREE.Vector3(sg*UP_EYE[0],UP_EYE[1],-UP_EYE[2]).multiplyScalar(sc).applyQuaternion(_uq).add(hb));
+  const pa=player.model.userData.parts, G=pa.glb, p=new THREE.Vector3();
+  if(G&&G.eyeB&&G.eyeL){ G.eyeB.updateWorldMatrix(true,false); p.copy(G.eyeL); G.eyeB.localToWorld(p); }
+  else { upBone('head_0',p); p.y+=.3; }
+  return [p,p.clone()];
+}
+function upHandTip(out){   // centre of his right palm: the wrist bone pushed along the forearm
+  const m=player.model, pa=m.userData.parts, G=pa.glb; m.updateMatrixWorld(true);
+  const w=upBone('hand_R',out); if(!w) return out.copy(player.pos);
+  const e=upBone('lowerarm_R',_ub2.set(0,0,0)); if(!e) return out;
+  const sc=(G?G.k:1)*m.scale.x; return out.addScaledVector(_ub2.copy(out).sub(e).normalize(),.3*sc);
 }
 function upPulse(){
   if(!player.alive||player.form.id!=='upgrade') return false;
   player.upT=1; Audio_.special('pulse');
   setTimeout(()=>{ if(!player.alive||player.form.id!=='upgrade'||PAUSED) return;
-    const st=new THREE.Vector3(); player.model.updateMatrixWorld(true); if(!upBone('hand_R',st)) st.copy(player.pos);
-    const d=aimDirFrom(st); st.addScaledVector(d,.6);
+    const st=upHandTip(new THREE.Vector3());   // the blast leaves the palm of his right hand
+    const d=aimDirFrom(st); st.addScaledVector(d,.15);
     spawnProjectile(player,UP_COL,30,42,false,'pulse',{explicitDir:d,explicitFrom:st,aoe:3.6});
     VFX.flip('charge',st,{size:2.2,dur:.22,tint:UP_COL,alpha:.9}); VFX.sparks(st,6,8,UP_COL,.25,.35);
-    shakeCamera(.1); player.upKick=1; },110);
+    shakeCamera(.1); player.upKick=1; },160);
   return true;
 }
 // glide: second jump press in the air. Kite-like: slow sink, steady forward drift, arms and legs spread.
@@ -3896,7 +3914,7 @@ const GLIDE_SPD=13, GLIDE_SINK=-2.8;
 function upGlideTick(dt){
   if(player.gliding&&(!player.alive||player.onGround||player.flying||player.swimming||player.onLadder||player.form.id!=='upgrade')) player.gliding=false;
   player.glideK=(player.glideK||0)+(((player.gliding?1:0)-(player.glideK||0))*Math.min(1,dt*7));
-  if(player.gliding&&Math.random()<dt*28){ for(const k of ['hand_L','hand_R']){ const h=upBone(k,_ub1.set(0,0,0)); if(h) VFX.particle('spark_01',h,{size:.22,sizeEnd:.04,life:.35,add:true,tint:UP_COL,vel:new THREE.Vector3(0,.4,0)}); } }
+  player.fallK=(player.fallK||0)+((((player.form.id==='upgrade'&&!player.onGround&&!player.flying&&!player.swimming&&player.vel.y<-3)?1:0)-(player.fallK||0))*Math.min(1,dt*9)); // fall pose = glide pose (pose only)
 }
 /* =========================================================================
    WILDVINE: elongating tentacle stab, Seed Bomb, Vine Web, arm-tentacle swing
@@ -4484,7 +4502,7 @@ function poseExtras(parts,moving,dt){
   const A=player.animT, S=Math.sin(A);
   if(player.flying){
     const lv=player.form.id==='diamondhead';
-    lean=lv?(moving?-.35:0):(moving?THREE.MathUtils.clamp(-(Math.PI/2-player.pitch),-1.0,0.2):-.12);
+    lean=lv?(moving?-.35:0):(moving?THREE.MathUtils.clamp(-(Math.PI/2-player.pitch),-1.0,0.2):(player.form.id==='chromastone'?0:-.12));   // Chromastone hovers upright when idle
     if(player.form.id==='heatblast') lean=THREE.MathUtils.clamp(-.12+(player.pitch||0)*.5,-.5,.6);
     if(player.form.id==='jetray') lean=moving?THREE.MathUtils.clamp(-(Math.PI/2-(player.pitch||0)*.6),-1.5,-.35):-.2;   // lies flat in the air like the reference
     const up=lv?1.0:(moving?2.9+S*.08:.5);
@@ -4492,7 +4510,8 @@ function poseExtras(parts,moving,dt){
   } else if(player.swimming){
     lean=moving?-(Math.PI/2-player.pitch*.7):-.1;
   }
-  if(player.form.id==='upgrade'&&(player.glideK||0)>.02) lean=-.75*player.glideK;   // belly-forward kite attitude
+  if(player.form.id==='upgrade'&&Math.max(player.glideK||0,player.fallK||0)>.02) lean=-.75*Math.max(player.glideK||0,player.fallK||0);
+  if(player.form.id==='upgrade'&&player.eyeHeld&&!player.flying&&!(Math.max(player.glideK||0,player.fallK||0)>.02)) lean=-.3;   // lean forward into the eye stream   // belly-forward kite attitude
   if(player.form.id==='echo_echo'&&(player.ejT||0)>0){ lean=-1.55; m.rotation.x+=(lean-m.rotation.x)*.3; }
   // (the old per-frame debris() blue trail was removed: it allocated a new material every frame; speed trails are now pooled in updateSpeedEffects)
   if((player.superT||0)>0.2&&!player.flying&&!player.swimming){ const _gp=m.userData.parts; lean=-.6*player.superT*((_gp&&_gp.glb)?GLBBODY.leanMul(player.form.id):1); }
@@ -4917,7 +4936,7 @@ function doJump(){
       player.flying = false; // gravity resumes and brings you back down
     }
   } else if(!player.onGround && player.form.id==='upgrade' && !player.swimming){   // jump + glide: second press opens the glide, another press closes it
-    if(player.gliding){ player.gliding=false; } else { player.gliding=true; player.vel.y=Math.max(player.vel.y,1.5); Audio_.jump(); VFX.sonicRing(player.pos.clone(),.5,UP_COL); }
+    if(player.gliding){ player.gliding=false; } else { player.gliding=true; player.vel.y=Math.max(player.vel.y,1.5); Audio_.jump(); }
   } else if(!player.onGround && player.form.id==='echo_echo' && !player.ejUsed && !player.swimming){ // double jump: a sonic blast under his feet pushes him up
     player.ejUsed=true; player.ejT=.5; player.vel.y=player.form.jump*1.05; if(!Audio_.sample('scream',.8,1,.5)) Audio_.scream();
     const dn=new THREE.Vector3(0,-1,0), hd=player.model.userData.parts&&player.model.userData.parts.head;
@@ -5246,12 +5265,12 @@ function playerAnimate(parts,dt,moving){
   const ry=player.model.rotation.y, id=player.form.id, fwd={x:-Math.sin(ry),z:-Math.cos(ry)};
   const atk = player.punchAnimT>0 ? atkInput(player.punchKind,player.punchAnimT,player.punchAnimDur||.25,{side:player.punchSide,id,amp:id==='echo_echo'?.85:1}) : null;
   const climb=!!player.onLadder;
-  player.ejT=Math.max(0,(player.ejT||0)-dt); player.upT=Math.max(0,(player.upT||0)-dt*2.2); player.upKick=Math.max(0,(player.upKick||0)-dt*5); player.castT=Math.max(0,(player.castT||0)-dt*2.6); player.castHold=Math.max(0,(player.castHold||0)-dt); player.csT=Math.max(0,(player.csT||0)-dt*2.2);
+  player.ejT=Math.max(0,(player.ejT||0)-dt); player.upT=Math.max(0,(player.upT||0)-dt*1.5); player.upKick=Math.max(0,(player.upKick||0)-dt*5); player.castT=Math.max(0,(player.castT||0)-dt*2.6); player.castHold=Math.max(0,(player.castHold||0)-dt); player.csT=Math.max(0,(player.csT||0)-dt*2.2);
   { const burn=id==='heatblast'&&player.flying&&parts.all; // flying Heatblast glows like he's on fire
     if(burn){ const tt=performance.now()/1000, k=.55+.25*Math.sin(tt*9)+.12*Math.sin(tt*23); for(const m of parts.all) m.emissive.setRGB(.38*k,.14*k,.01*k); player._burn=true; }
     else if(player._burn&&parts.all){ for(const m of parts.all) m.emissive.setHex(m.userData.baseEmis||0); player._burn=false; } }
   animateRig(parts,dt,{pos:player.pos,fwd,grounded:player.onGround||climb||(id==='xlr8'&&(player.superT||0)>.2&&!player.flying&&Math.abs(player.vel.y)<9),vy:player.vel.y,flying:player.flying,hover:id==='diamondhead',moving,
-    swimming:player.swimming,ball:player._ball||0,carrying:!!carried,cast:id==='heatblast'?Math.max(player.castT||0,player.castHold>0?1:0):0,castHold:id==='heatblast'&&player.castHold>0,castSide:player.castSide||0,aimP:((id==='upgrade'&&player.upT>0)||(id==='chromastone'&&(player.csT>0||player.chgHeld))||(id==='heatblast'&&(player.castT>0||player.castHold>0))||(id==='wildvine'&&atk))?csAimPitch():player.pitch,bodyP:player.pitch,xl:id==='xlr8',xlLeap:!!player.xlAir,tf:TF.active?TF.t:0,tfBen:player.form===BEN,ejB:Math.max(0,player.ejT||0)/.5,up:id==='upgrade'?(player.upT||0):0,upEye:id==='upgrade'&&!!player.eyeHeld,glide:id==='upgrade'?(player.glideK||0):0,hb:id==='heatblast',fa:id==='four_arms',wvS:id==='wildvine'?(wvStabPose()||(WEB.pose>0?{kind:'right',coil:0,ext:1,env:_sm(Math.min(1,(.95-WEB.pose)/.15)),fx:0}:null)):null,wvSw:id==='wildvine'?wvSwingPose():null,csStream:id==='chromastone'&&!!player.csBlastHeld&&CSS.t>.32,wvWind:(id==='wildvine'&&player.wvJumpT>0)?1-player.wvJumpT/.17:0,cs:id==='chromastone'?Math.max(player.csT||0,player.chgHeld?1:0):0,csChg:id==='chromastone'&&player.chgHeld?Math.min(1,Math.max(0,((player.chgT||0)-.2)/.15)):0,id,jr:id==='jetray',wv:id==='wildvine',superT:id==='xlr8'?(player.superT||0):0,atk,hurt:(player.hurtT||0)/.35,climb,climbSpd:Math.abs(player.vel.y),charge:0});
+    swimming:player.swimming,ball:player._ball||0,carrying:!!carried,cast:id==='heatblast'?Math.max(player.castT||0,player.castHold>0?1:0):0,castHold:id==='heatblast'&&player.castHold>0,castSide:player.castSide||0,aimP:((id==='upgrade'&&player.upT>0)||(id==='chromastone'&&(player.csT>0||player.chgHeld))||(id==='heatblast'&&(player.castT>0||player.castHold>0))||(id==='wildvine'&&atk))?csAimPitch():player.pitch,bodyP:player.pitch,xl:id==='xlr8',xlLeap:!!player.xlAir,tf:TF.active?TF.t:0,tfBen:player.form===BEN,ejB:Math.max(0,player.ejT||0)/.5,up:id==='upgrade'?(player.upT||0):0,upEye:id==='upgrade'&&!!player.eyeHeld,glide:id==='upgrade'?Math.max(player.glideK||0,player.fallK||0):0,hb:id==='heatblast',fa:id==='four_arms',wvS:id==='wildvine'?(wvStabPose()||(WEB.pose>0?{kind:'right',coil:0,ext:1,env:_sm(Math.min(1,(.95-WEB.pose)/.15)),fx:0}:null)):null,wvSw:id==='wildvine'?wvSwingPose():null,csStream:id==='chromastone'&&!!player.csBlastHeld&&CSS.t>.32,wvWind:(id==='wildvine'&&player.wvJumpT>0)?1-player.wvJumpT/.17:0,cs:id==='chromastone'?Math.max(player.csT||0,player.chgHeld?1:0):0,csChg:id==='chromastone'&&player.chgHeld?Math.min(1,Math.max(0,((player.chgT||0)-.2)/.15)):0,id,jr:id==='jetray',wv:id==='wildvine',superT:id==='xlr8'?(player.superT||0):0,atk,hurt:(player.hurtT||0)/.35,climb,climbSpd:Math.abs(player.vel.y),charge:0});
 }
 // Presentation-layer inertia: gameplay velocity stays instant, the body does not. Any change of speed along the facing
 // direction (starting, braking, sudden stops) pitches the whole body forward through a damped spring and then settles.
@@ -5593,6 +5612,22 @@ function updateMinimap(dt){
     c.restore();
   }catch(e){}
 }
+/* =========================================================================
+   FULL MAP - tap the minimap (or press M). The map is its own page (map.html) shown in an overlay; the game is paused while it is open.
+========================================================================= */
+const BM={open:false,fr:null};
+function bmState(){ return {type:'state',x:player.pos.x,z:player.pos.z,yaw:player.yaw,color:getComputedStyle(document.documentElement).getPropertyValue('--theme').trim()||'#39ff8a',
+  enemies:enemies.filter(e=>e.alive&&!(e.npc&&!e.aggro)).map(e=>[e.mesh.position.x,e.mesh.position.z,e.npc?1:0])}; }
+function bmOpen(){
+  if(BM.open||!gameOn||PAUSED) return;
+  if(!BM.fr){ const f=document.createElement('iframe'); f.id='bigmap'; f.src='map.html'; f.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:0;z-index:310;background:#03100a;display:none'; document.body.appendChild(f); BM.fr=f; f.addEventListener('load',()=>{ if(BM.open) f.contentWindow.postMessage(bmState(),'*'); }); }
+  BM.open=true; PAUSED=true; releaseInputs(); Audio_.menu(true); ['flame','scream','hbfly'].forEach(n=>Audio_.loop(n,false)); Audio_.hornHold(false);
+  BM.fr.style.display='block'; try{ BM.fr.contentWindow.postMessage(bmState(),'*'); }catch(e){}
+}
+function bmClose(){ if(!BM.open) return; BM.open=false; BM.fr.style.display='none'; PAUSED=false; clock.getDelta(); Audio_.menu(false); }
+addEventListener('message',e=>{ if(e.data&&e.data.type==='mapclose') bmClose(); });
+document.getElementById('minimap').addEventListener('click',ev=>{ ev.stopPropagation(); bmOpen(); });
+addEventListener('keydown',ev=>{ if(ev.code==='KeyM'&&gameOn){ BM.open?bmClose():bmOpen(); } });
 /* =========================================================================
    UI SYNC
 ========================================================================= */

@@ -480,7 +480,7 @@
 (function(){
 'use strict';
 const LDR=window.LD;
-const SCRIPTS=[['three.min.js',30.3,'THREE ENGINE'],['glb-libs.js',16.3,'MODEL LOADERS'],['models.js',139.7,'CHARACTER MODELS'],['props.js',70.2,'PROPS'],['terrain_assets.js',64.0,'TERRAIN'],['world.js',8.9,'WORLD'],['mapdata.js',18.8,'MAP'],['citydata.js',58.2,'CITY'],['terrain.js',9.6,'TERRAIN'],['citymodel.js',8.9,'CITY'],['cardata.js',47.9,'VEHICLES'],['carmodel.js',7.2,'VEHICLES'],['vfx.js',10.5,'EFFECTS'],['glbbody.js',11.8,'CHARACTER RIGS']];
+const SCRIPTS=[['three.min.js',30.3,'THREE ENGINE'],['glb-libs.js',16.3,'MODEL LOADERS'],['models.js',139.7,'CHARACTER MODELS'],['props.js',70.2,'PROPS'],['terrain_assets.js',64.0,'TERRAIN'],['world.js',8.9,'WORLD'],['mapdata.js',18.8,'MAP'],['citydata.js',58.2,'CITY'],['terrain.js',9.6,'TERRAIN'],['citymodel.js',8.9,'CITY'],['cardata.js',47.9,'VEHICLES'],['carmodel.js',7.2,'VEHICLES'],['vfx.js',10.5,'EFFECTS'],['glbbody.js',11.8,'CHARACTER RIGS'],['savegame.js',2,'SAVE DATA'],['missions.js',9,'MISSIONS']];
 const IMAGES=['textures/cars.jpg','portraits/gwen.png','portraits/grandpa_max.png','vfx/big_hit_6x5.png','vfx/charge_7x6.png','vfx/circle_01.png','vfx/dirt_01.png','vfx/dirt_02.png','vfx/electric_ring_6x5.png','vfx/explosion_01_8x8.png','vfx/explosion_6x5.png','vfx/fire_01.png','vfx/fire_01_8x8.png','vfx/fire_point_6x5.png','vfx/fire_ring_6x5.png','vfx/flame_01_16x4.png','vfx/flare_01.png','vfx/impact_white_6x4.png','vfx/light_01.png','vfx/light_02.png','vfx/lightstreaks_6x5.png','vfx/smoke_01.png','vfx/smoke_05.png','vfx/spark_01.png','vfx/spark_02.png','vfx/spark_03.png','vfx/spark_04.png','vfx/star_01.png','vfx/star_02.png','vfx/star_explosion_6x5.png','vfx/trace_01.png','vfx/trace_02.png','vfx/trace_03.png','vfx/trace_04.png','vfx/trace_05.png','vfx/trace_06.png','vfx/twirl_01.png','vfx/twirl_02.png','vfx/vortex_6x5.png','vfx/wavy_blue_6x5.png','vfx/wavy_purple_6x5.png','vfx/wispy_smoke_01_8x8.png'];
 const MIN_SHOWN=900;
 const W={audio:14,img:7,js:30,init:6,glb:24,warm:19}, P={audio:0,img:0,js:0,init:0,glb:0,warm:0};
@@ -2885,6 +2885,8 @@ const ENEMY_STATS = {
   ranged:  { hp:32,  speed:2.2, damage:6,  color:0x2a6a8a, size:[0.75,1.05,0.75], yOff:0.53, retreatHpFrac:0,    ranged:true,  chaseRange:14, loseRange:18, preferredDist:8, projSpeed:16 },
   brute:   { hp:70,  speed:1.8, damage:12, color:0x8a2a2a, size:[1.1,1.6,1.1],  yOff:0.8,  retreatHpFrac:0,    ranged:false, chaseRange:8,  loseRange:12, knockOnHit:5 },
   speed:   { hp:30,  speed:9.0, damage:6,  color:0xd8a020, size:[0.65,0.95,0.65], yOff:0.48, retreatHpFrac:0.2,  ranged:false, chaseRange:16, loseRange:22 },
+  laser_drone:{ hp:38, speed:2.8, damage:7, color:0x55606e, size:[0.8,1.1,0.8], yOff:0.8, retreatHpFrac:0, ranged:true, chaseRange:26, loseRange:40, preferredDist:9, projSpeed:26 },
+  blade_drone:{ hp:26, speed:8.5, damage:7, color:0x555a66, size:[0.7,0.5,0.7], yOff:0.5, hover:.75, retreatHpFrac:0, ranged:false, chaseRange:30, loseRange:48 },
   elite:   { hp:110, speed:2.4, damage:11, color:0x1a1a2e, size:[0.95,1.35,0.95], yOff:0.68, retreatHpFrac:0.15, ranged:true,  chaseRange:16, loseRange:20, preferredDist:6, projSpeed:20 },
 };
 Object.values(ENEMY_STATS).forEach(st=>{ st.yOff*=CHAR_SCALE; if(st.size) st.size=st.size.map(v=>v*CHAR_SCALE); });
@@ -2893,6 +2895,8 @@ const ENEMY_LOOK = {
   ranged:{skin:0xc8a07a,bottom:0x123040,accent:0x111111,torsoW:.62,torsoD:.36,armT:.18,legT:.22},
   brute: {skin:0xb98a68,bottom:0x3a1414,accent:0x1a1a1a,torsoW:1.12,torsoD:.62,armT:.34,legT:.32,headS:.44,armLen:.95},
   speed: {skin:0xc8a07a,bottom:0x5a4210,accent:0x222222,torsoW:.52,torsoD:.3,armT:.16,legT:.2,legLen:1.08,torsoH:1.0},
+  laser_drone:{skin:0x7a828e,bottom:0x3a404a,accent:0x20242c,torsoW:.66,torsoD:.36,armT:.17,legT:.22,headS:.5},
+  blade_drone:{skin:0x7a828e,bottom:0x3a404a,accent:0x20242c,torsoW:.5,torsoD:.3,armT:.12,legT:.14},
   elite: {skin:0x9a7a62,bottom:0x0c0c18,accent:0xcc2222,torsoW:.82,torsoD:.42,armT:.22,legT:.26,legLen:1.05,torsoH:1.2}
 };
 function makeEnemy(type, x, z, y0){
@@ -2901,6 +2905,7 @@ function makeEnemy(type, x, z, y0){
   const y = y0!==undefined ? y0 : groundTopAt(x,z);
   const look=Object.assign({},ENEMY_LOOK[type]||ENEMY_LOOK.normal,{top:stats.color,sleeve:true});
   const R=buildRig(look), parts=R.parts;
+  if(type==='laser_drone'&&window.GLBBODY&&GLBBODY.ready('laser_drone')) GLBBODY.attach('laser_drone',parts,null);
   const k=(stats.yOff*2)/parts.dims.total;
   R.g.scale.setScalar(k); R.g.position.y=-stats.yOff;
   if(type==='ranged'||type==='elite'){ const gun=new THREE.Mesh(UB,rigMat(0x1c1c22)); gun.scale.set(.12,.46,.15); gun.position.set(0,-parts.dims.armLen*.5-.16,0); parts.elbowR.add(gun); parts.all.push(gun.material); }
@@ -2920,6 +2925,7 @@ function makeEnemy(type, x, z, y0){
     swing:null, swSide:false, hurtT:0,
   };
   enemies.push(en);
+  if((type==='laser_drone'||type==='blade_drone')&&window.MissionAssets) MissionAssets.decorate(en,type);
   return en;
 }
 // --- enemy animation helpers ---
@@ -2927,7 +2933,7 @@ const _wd=new THREE.Vector3();
 function enemySwing(en,kind,dur,tc){ if(kind==='light'){ en.swSide=!en.swSide; kind=en.swSide?'right':'left'; } en.swing={kind,dur,left:dur,tc:tc||.3}; }
 function animateEnemies(dt){
   for(let i=0;i<enemies.length;i++){
-    const en=enemies[i]; if(en.npc||!en.alive||en.ice||!en.parts) continue;
+    const en=enemies[i]; if(en.npc||!en.alive||en.ice||!en.parts||en.type==='blade_drone') continue;
     const p=en.mesh.position; if(Math.abs(p.x-player.pos.x)>60||Math.abs(p.z-player.pos.z)>60) continue; // asleep
     const stats=ENEMY_STATS[en.type]||ENEMY_STATS.normal;
     en.mesh.getWorldDirection(_wd);
@@ -2971,6 +2977,7 @@ function pickEnemyType(){
 // Enemies stand on whatever surface is under them (rooftops, landings, ramps) and drop down when they walk off.
 function enemyGroundY(en,yOff,dt){
   const p=en.mesh.position, feet=p.y-yOff, sf=groundTopAt(p.x,p.z,feet+0.05);
+  if(en.hover){ const tg=sf+yOff+en.hover+.22*Math.sin(performance.now()*.004+(en.ph||0)); return p.y+(tg-p.y)*Math.min(1,dt*6); }   // flying drones hover (and bob) above the ground
   return (sf>=feet ? sf : Math.max(sf, feet-16*dt)) + yOff;
 }
 // A rooftop within reach of the player (12-38 units away) to ambush from, so rooftops become fighting spaces.
@@ -2997,7 +3004,7 @@ function updateEnemySpawning(dt){
   enemySpawnT -= dt;
   if(enemySpawnT > 0) return;
   enemySpawnT = 6;
-  const active = enemies.filter(e=>!e.npc && e.alive).length;
+  const active = enemies.filter(e=>!e.npc && e.alive && !e.mission).length;
   if(active >= (MAX_ENEMIES_BY_Q[QUALITY.level]||5)) return;
   // never pile more enemies into a fight that is already happening
   if(enemies.some(e=>!e.npc&&e.alive&&e.state==='chase'&&e.mesh.position.distanceTo(player.pos)<16)) return;
@@ -3033,6 +3040,7 @@ function damageEnemy(en, dmg, dirAway, opts){
   if(en.hp <= 0){
     en.alive = false;
     if(lock.en===en) setLock(null); // never let a lock survive onto a recycled enemy object
+    if(en.mission||en.drone){ if(en.drone&&window.MissionAssets) MissionAssets.droneDie(en); else startEnemyDeath(en,dirAway); if(en.onDeath) en.onDeath(en); return; }   // mission enemies never respawn
     startEnemyDeath(en, dirAway);
     setTimeout(()=>{
       const ra=Math.random()*6.283, rd=32+Math.random()*16;
@@ -3116,9 +3124,9 @@ function updateEnemies(dt){
           if(!blockedAt(nx,p.z,p.y-0.5)) p.x = nx; if(!blockedAt(p.x,nz,p.y-0.5)) p.z = nz;
         }
         if(en.atkCd<=0 && dist < (stats.chaseRange) && grabSlot(en,2.2,true) && !(en.windT>0)){
-          en.atkCd = en.type==='elite' ? 1.1 : 1.6; enemySwing(en,'shoot',.32);
+          en.atkCd = en.type==='elite' ? 1.1 : en.type==='laser_drone' ? 1.5 : 1.6; enemySwing(en,'shoot',.32);
           const shotDir = tpos.clone().sub(p); shotDir.y = 0.15; shotDir.normalize();
-          spawnProjectile(null, en.type==='elite'?0xff5a5a:0x5ac8ff, en.damage, stats.projSpeed||16, false, en.type==='elite'?'fire':null,
+          spawnProjectile(null, en.type==='elite'||en.type==='laser_drone'?0xff4a3a:0x5ac8ff, en.damage, stats.projSpeed||16, false, en.type==='elite'?'fire':null,
             { explicitDir: shotDir, explicitFrom: p.clone().add(new THREE.Vector3(0,0.6,0)), hostile:true });
         }
         // Elite occasionally also closes in for a melee hit if the target strays very close.
@@ -4878,20 +4886,22 @@ document.getElementById('btn-attack').addEventListener('touchend', ()=> clearTim
 function jumpPress(){
   if(!player.alive||player.driving) return;
   if(player.form.id==='wildvine' && player.onGround && !player.flying && !player.swimming && !player.onLadder && !(player.wvJumpT>0)){ player.wvJumpT=.17; return; }   // anticipation: roots pull in, body sinks like a wound spring, THEN the launch
-  if(player.form.id==='four_arms' && player.onGround && !player.flying && !player.swimming && !player.onLadder){ leapNow(.8); return; }   // instant big jump: no crouch, no charge, just the explosion sound
+  if(player.form.id==='four_arms' && player.onGround && !player.flying && !player.swimming && !player.onLadder){ player.leapCharging=true; player.leapT=0; player.leapC=0; return; }   // tap = normal jump (decided on release); hold = crouch + charge a super jump
   doJump();
 }
 function jumpRelease(){
   if(!player.leapCharging) return;
   player.leapCharging=false; const held=player.leapT||0, c=player.leapC||0; player.leapC=0;
-  if(held<.16 || !player.onGround) { if(player.onGround) doJump(); } else leapNow(c);
+  if(held<.22 || !player.onGround) { if(player.onGround) doJump(); } else leapNow(c);
 }
-// Charged leap: 0..1 charge -> launch speed 13..34.5 (apex ~5..33 units, towers top out near 25) plus forward drive that carries through the air.
+// Charged leap, real projectile physics: pick the apex height h (4..30 units) from the charge, launch speed v = sqrt(2*g*h), then it is a pure ballistic arc -
+// gravity only, constant horizontal velocity (no air drag), landing energy = m*g*h so the ground pound scales with the fall height.
 function leapNow(c){
   const f={x:-Math.sin(player.yaw),z:-Math.cos(player.yaw)}, r={x:Math.cos(player.yaw),z:-Math.sin(player.yaw)};
   let mx=moveInput.x,my=moveInput.y; if(Math.hypot(mx,my)<.15){ mx=0; my=1; }
-  const dx=f.x*my+r.x*mx, dz=f.z*my+r.z*mx, l=Math.hypot(dx,dz)||1, hs=4+c*15;
-  player.vel.y=13+c*21.5; player.onGround=false; player.leap={x:dx/l*hs,z:dz/l*hs}; player.leapActive=true; player.leapPow=c; player._airVy=player.vel.y;
+  const steer=Math.min(1,Math.hypot(moveInput.x,moveInput.y)), dx=f.x*my+r.x*mx, dz=f.z*my+r.z*mx, l=Math.hypot(dx,dz)||1;
+  const h=4+c*26, vy=Math.sqrt(2*-GRAVITY*h), hs=steer<.15?vy*.12:vy*.5;     // standing still = near-vertical jump; with the stick = ~27 deg off vertical
+  player.vel.y=vy; player.onGround=false; player.leap={x:dx/l*hs,z:dz/l*hs}; player.leapActive=true; player.leapPow=c; player._airVy=player.vel.y;
   Audio_.explosion();
   shakeCamera(.1);
 }
@@ -4899,7 +4909,7 @@ function updateLeap(dt){
   if(player.form.id!=='four_arms' || !player.alive){ player.leapCharging=false; player.leapC=0; player.leapActive=false; }
   if(player.leapCharging){
     if(!player.onGround || player.flying){ player.leapCharging=false; player.leapC=0; }
-    else { player.leapT=(player.leapT||0)+dt; const prev=player.leapC||0; player.leapC=Math.max(0,Math.min(1,(player.leapT-.14)/1.0));
+    else { player.leapT=(player.leapT||0)+dt; const prev=player.leapC||0; player.leapC=Math.max(0,Math.min(1,(player.leapT-.22)/1.0));
       if(prev<1 && player.leapC>=1){ statusText('FULL POWER - RELEASE'); Audio_.click(); }
       if(player.leapC>0 && Math.random()<dt*10*player.leapC){ const b=player.pos.clone(); b.y-=.85; VFX.dirtBurst(b,1,.35); } }
   }
@@ -4907,12 +4917,12 @@ function updateLeap(dt){
   if(player.leapActive){
     if(!player.onGround){
       player._airVy=player.vel.y;
-      const L=player.leap, k=Math.max(0,1-.12*dt); L.x*=k; L.z*=k;                               // momentum carries; steering still works on top
+      const L=player.leap;                                                                          // no drag in flight: horizontal velocity stays constant
       if(blockedAt(player.pos.x+L.x*dt*2,player.pos.z,player.pos.y-1)) L.x=0;                     // stop pushing into a wall face
       if(blockedAt(player.pos.x,player.pos.z+L.z*dt*2,player.pos.y-1)) L.z=0;
     } else if(player.leapGrace>0){ player.leapGrace-=dt; }
     else {                                                                                          // landing: ground pound scaled by how hard we came down
-      player.leapActive=false; const c=player.leapPow||0, impact=Math.min(1,Math.max(0,(-(player._airVy||0)-8)/26));
+      player.leapActive=false; const c=player.leapPow||0, impact=Math.min(1,Math.max(0,(player._airVy||0)*(player._airVy||0)/(2*-GRAVITY)/30));   // fall height v^2/2g as a fraction of the biggest leap
       if(impact>.08){ const rad=3.5+impact*5.5; shockwaveAt(player.pos,rad,15+impact*55,true); shatterNear(player.pos,rad,'slam'); shakeCamera(.15+impact*.45); Audio_.explosion();
         { const b=player.pos.clone(); b.y-=.9; VFX.slam(b,.8+impact*.8); } }
       player.leap={x:0,z:0}; player.leapPow=0;
@@ -5605,6 +5615,7 @@ function updateMinimap(dt){
     }
     const dot=(wx,wz,col,r)=>{ const dx=wx-px, dz=wz-pz; let mx=(dx*rx+dz*rz)*k, my=-(dx*fx+dz*fz)*k; const m=Math.hypot(mx,my); if(m>RR-3){ mx*=(RR-3)/m; my*=(RR-3)/m; r*=.7; } c.fillStyle=col; c.beginPath(); c.arc(cx+mx,cy+my,r,0,Math.PI*2); c.fill(); };
     for(let i=0;i<enemies.length;i++){ const e=enemies[i]; if(!e.alive) continue; if(e.npc&&!e.aggro) continue; const p=e.mesh.position; if(Math.abs(p.x-px)>RANGE*1.5||Math.abs(p.z-pz)>RANGE*1.5) continue; dot(p.x,p.z,e.npc?'#ff9a2e':'#ff3a3a',3); }
+    { const mk=window.__MIS&&window.__MIS.marker&&window.__MIS.marker(); if(mk){ dot(mk.x,mk.z,'#ffd24a',4.6); } }
     // north marker
     const nx=(0*rx+(-1)*rz), ny=-(0*fx+(-1)*fz); c.fillStyle='#fff'; c.font='bold 11px sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('N',cx+nx*(RR-8),cy+ny*(RR-8));
     // player arrow
@@ -5617,6 +5628,7 @@ function updateMinimap(dt){
 ========================================================================= */
 const BM={open:false,fr:null};
 function bmState(){ return {type:'state',x:player.pos.x,z:player.pos.z,yaw:player.yaw,color:getComputedStyle(document.documentElement).getPropertyValue('--theme').trim()||'#39ff8a',
+  marker:(window.__MIS&&window.__MIS.marker)?window.__MIS.marker():null,
   enemies:enemies.filter(e=>e.alive&&!(e.npc&&!e.aggro)).map(e=>[e.mesh.position.x,e.mesh.position.z,e.npc?1:0])}; }
 function bmOpen(){
   if(BM.open||!gameOn||PAUSED) return;
@@ -5704,6 +5716,7 @@ function loop(){
   updateVehicles(wdt);
   updateOmnitrix(dt);
   updateHealth(dt);
+  if(window.__MIS) window.__MIS.update(dt);
   updateMinimap(dt);
   updateCamera();
   updateSpeedEffects(dt);
@@ -5746,6 +5759,8 @@ function setCamFree(v){
 bindBtn('cam-btn', ()=>{ if(!PAUSED) setCamFree(!camMode.free); });
 
 let PAUSED=false, gameOn=false, pauseHist=false, ignorePop=0, hudEdit=null;
+// Missions (www/missions.js): the engine gets exactly the pieces of the game it needs
+try{ if(window.MissionSystem) window.MissionSystem({THREE,scene,camera,player,enemies,VFX,Audio_,colliders,groundTopAt:(x,z,fy)=>groundTopAt(x,z,fy),spawnEnemy:(t,x,z)=>makeEnemy(t,x,z),getPortrait:k=>getPortraitCanvas(k),rv:()=>ENVP.RV_POS,playing:()=>gameOn&&!PAUSED&&player.alive,snapshot:()=>worldSnapshot(),SaveGame:window.SaveGame}); }catch(e){ console.warn('missions',e); }
 const pausePage=document.getElementById('pause-page');
 const ppShow=id=>{ ['pp-main','pp-opts'].forEach(k=>document.getElementById(k).style.display=(k===id?'flex':'none')); document.getElementById('pp-hudbar').style.display='none'; pausePage.classList.remove('editing'); };
 function releaseInputs(){ AIM.on=false; player.csBlastHeld=false; moveInput.x=0; moveInput.y=0; player.flameHeld=false; player.sprayHeld=false; player.atkHeld=false; player.superHeld=false; player.rollHeld=false; player.runLatch=false; joyId=null; resetJoy(); joyZone.classList.remove('run','held'); camTouchId=null; drv.l=drv.r=drv.g=false; document.querySelectorAll('.steer').forEach(x=>x.classList.remove('on')); for(const k in keys) keys[k]=false; try{ if(carried===null) {} }catch(e){} }
@@ -5816,6 +5831,28 @@ document.getElementById('pp-reset').addEventListener('click',()=>{ if(!hudEdit) 
   [['touchstart',down],['touchmove',move],['touchend',up],['touchcancel',up],['mousedown',down],['mousemove',move],['mouseup',up]].forEach(([n,f])=>addEventListener(n,f,{capture:true,passive:false}));
 }
 
+/* ---- SAVE GAME (www/savegame.js): where you are, which alien, flying or not ---- */
+function worldSnapshot(){
+  const f=player.form, id=(f===BEN||!f||f.id==='ben')?'ben':f.id;
+  return { x:+player.pos.x.toFixed(2), y:+player.pos.y.toFixed(2), z:+player.pos.z.toFixed(2), yaw:+player.yaw.toFixed(3), pitch:+player.pitch.toFixed(3), form:id,
+    flying:!!(player.flying&&f&&f.flies), hp:+(player.health/Math.max(1,f.maxHealth)).toFixed(3), en:+(player.energy/Math.max(1,f.maxEnergy)).toFixed(3) };
+}
+function saveWorld(){ try{ if(!window.SaveGame||!gameOn||!player.alive||player.driving&&false) return; SaveGame.set('world',worldSnapshot()); SaveGame.flush(); }catch(e){} }
+function restoreSave(){
+  if(!window.SaveGame) return;
+  // a mission in progress restarts from its last savepoint; otherwise you resume exactly where you stopped
+  const cp=(window.__MIS&&__MIS.resumePoint)?__MIS.resumePoint():null, w=cp||SaveGame.get('world'); if(!w||typeof w.x!=='number') return;
+  if(w.form&&w.form!=='ben'){ const def=ALIENS.find(a=>a.id===w.form); if(def) setForm(def,w.form,true); }
+  player.pos.set(w.x, Math.max(typeof w.y==='number'?w.y:0, groundTopAt(w.x,w.z)+1.1), w.z); player.vel.set(0,0,0);
+  if(typeof w.yaw==='number') player.yaw=w.yaw; if(typeof w.pitch==='number') player.pitch=Math.max(-1.3,Math.min(1.25,w.pitch));
+  if(!cp&&typeof w.hp==='number'){ player.health=Math.max(1,Math.min(player.form.maxHealth,w.hp*player.form.maxHealth)); HP.prev=player.health; }
+  if(!cp&&typeof w.en==='number') player.energy=Math.max(0,Math.min(player.form.maxEnergy,w.en*player.form.maxEnergy));
+  if(w.flying&&player.form.flies&&!cp) player.flying=true;
+  player.onGround=false;
+}
+setInterval(()=>{ if(gameOn&&!PAUSED) saveWorld(); },4000);
+addEventListener('visibilitychange',()=>{ if(document.hidden) saveWorld(); });
+addEventListener('pagehide',saveWorld); addEventListener('beforeunload',saveWorld);
 function beginGame(opts){
   const quiet=!!(opts&&opts.quiet);                 // quiet = called by the loader behind the loading screen: no sound, no pointer lock
   document.getElementById('start-screen').style.display = 'none';
@@ -5823,6 +5860,7 @@ function beginGame(opts){
   { const S_=readSettings(); if(S_.omni===false) OMNI.enabled=false; if(S_.perf) setPerf(true); }
   gameOn=true; document.body.classList.add('playing'); try{ history.pushState({g:1},''); }catch(e){}
   setForm(BEN, 'ben', true);                        // starting form: no mutate sound / flash
+  try{ restoreSave(); }catch(e){ console.warn('restore',e); }
   if(!quiet){ Audio_.enableGame(true); setTimeout(warmPortraits,1200); if(!isTouch){ renderer.domElement.requestPointerLock && renderer.domElement.requestPointerLock(); } }
   if(screen.orientation && screen.orientation.lock){ try{ screen.orientation.lock('landscape').catch(()=>{}); }catch(e){} }
   loop();

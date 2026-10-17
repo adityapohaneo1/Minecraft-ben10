@@ -275,6 +275,14 @@ instead of the box anatomy. Ben, Diamondhead, civilians and enemies still use th
 - Echo Echo double jump: short scream recording only, then it stops.
 - Vehicle horn: sounds only while held (`Audio_.hornHold`).
 
+## v71 - Mission 01: Unwanted Visitors
+- `www/missions.js` is a modular mission engine (save/restore in `localStorage` key `omniverse_missions_v1`, objective tracker, world waypoint, minimap + map marker, interactables, story dialogue, CHILL SMALL prompt, completion screen). A new mission = another definition next to Mission 01.
+- Flow: Gwen calls ~9 s after the game starts -> attack site (road crossing at 182,-84): 2 Flying Blade Drones + 1 Laser Drone -> inspect the wreck -> follow the signal to the relay bunker on the north-west coast (-170,-262), open the door -> beat the guards (2 Laser Drones + 1 Blade Drone) -> use the terminal (Psyphon hologram) -> report to Grandpa Max at the Rust Bucket -> completion screen.
+- Interact with the yellow button (or `G`). `CHILL SMALL` pauses the mission without losing anything; tap the grey tracker to resume. Defeated enemies stay defeated after a reload.
+- Models: `models/laser_drone.glb` (rigged, E-11 blaster in hand), `blade_drone.glb` (animated), `psyphon.glb` (hologram), `e11_blaster.glb`; rebuild `www/models.js` with `node tools/build-models.js`.
+- Map: tapping the minimap opens `www/map.html` (game paused); it shows the mission marker.
+- Reset the mission for testing: run `__MIS.reset()` in the console or clear that localStorage key.
+
 ## v68 changes
 - v68b: Superman idle now Chromastone only (other flyers reverted); Upgrade's fall pose = glide pose (pose only); XLR8: 3-stage run stride (reach / gathered / mirrored reach) and all old sprint VFX replaced by tiny blue wind streaks.
 - Upgrade: eye beam now fires from the green eye circle on his head, full eye diameter; body leans forward while eye-blasting.
@@ -292,3 +300,8 @@ instead of the box anatomy. Ben, Diamondhead, civilians and enemies still use th
 - **Flight ceiling ("the roof"):** Heatblast / Jetray / Chromastone / Diamondhead can no longer climb forever. Climbing slows over the last 45 units and stops at `FLY_CEIL` (230; skyscrapers top out near 150). A cloud deck fades in as you approach it and an "ALTITUDE LIMIT" message shows.
 - **Sounds:** Heatblast fireballs and Wildvine seed bombs now play an explosion sound on contact with anything (`Audio_.blast`). Punching no longer plays the 4 s sprint "swoosh" clip (it was the fallback when there is no `punch.mp3`); it is now a short synth whoosh unless you add `sounds/punch.mp3`.
 - Not changed: XLR8 sprint VFX (needs the reference clip again).
+
+## v72 — Mission start flow + save system
+- Mission 01 no longer auto-starts. After 25–70 s of play Grandpa Max gives a random tip and marks the SIGNAL SPOT (70,112) on the map/minimap. Go whenever you like; within 14 units a START button appears disabled, charges for 2 s, then enables. Tapping it triggers Gwen's contact.
+- `www/savegame.js`: single key `omniverse_save_v1` (position, yaw, form, flying, hp/energy, mission state). Autosaves every 4 s and on pause/close. `SaveGame.clear()` wipes it, `__MIS.reset()` resets the mission.
+- Quitting mid-mission restarts at the last mission savepoint (full hp, on the ground); quitting in free roam or after "CHILL SMALL" resumes the exact spot.

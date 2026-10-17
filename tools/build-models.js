@@ -4,7 +4,7 @@
 const fs=require('fs'), path=require('path');
 const root=path.join(__dirname,'..');
 const kinds=['ben','diamondhead','four_arms','heatblast','xlr8','echo_echo','cannonbolt','upgrade'];   // first block: the main bodies
-const extra=['cannonbolt_ball','jetray','chromastone','wildvine'];                                       // appended one per line
+const extra=['cannonbolt_ball','jetray','chromastone','wildvine','laser_drone','blade_drone','psyphon','e11_blaster'];                                       // appended one per line
 const b64=k=>{ const f=path.join(root,'models',k+'.glb'); if(!fs.existsSync(f)){ console.log('skip',k); return null; } const b=fs.readFileSync(f); console.log(k,(b.length/1024).toFixed(0)+' KB'); return b.toString('base64'); };
 let out='window.__GLB_DATA={\n';
 for(const k of kinds){ const s=b64(k); if(s) out+='"'+k+'":"'+s+'",\n'; }

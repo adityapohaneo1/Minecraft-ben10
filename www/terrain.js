@@ -123,7 +123,7 @@ function roadQuery(x,z,ex){ const l=RB.get(Math.floor(x/RBS)+','+Math.floor(z/RB
   for(let i=0;i<l.length;i++){ const s=l[i]; if(ex&&s.L===ex) continue; const dx=s.bx-s.ax, dz=s.bz-s.az, t=Math.max(0,Math.min(1,((x-s.ax)*dx+(z-s.az)*dz)/(dx*dx+dz*dz))), d=Math.hypot(x-s.ax-dx*t,z-s.az-dz*t)-s.L.w; if(d<bd){ bd=d; bs=s; } }
   return bs?{d:bd,L:bs.L,k:bs.k}:null; }
 const API={bio:(x,z)=>Math.max(mapS(MBIO,x,z,255),.55*sm(0,500,hillR(x,z))),urb:(x,z)=>mapS(MURB,x,z,1)*MU,RLINES:RL,roadQuery,roadDist:(x,z)=>{ const q=roadQuery(x,z); return q?q.d:1e9; },px2w,EXCL,excl,prefetch,cls,CELL,WATERDH,BX,BZ,R0,R1,exact,h,land:landField,riverQuery,hillR,hillH,RIVERS,MASSIFS,SEGS,
-  inBounds:(x,z)=>{ const C=typeof window!=='undefined'&&window.__CITY; if(C){ const b=C.bounds; return x>b[0]-3&&x<b[2]+3&&z>b[1]-3&&z<b[3]+3; } return x>-BX&&x<BX&&z>-BZ&&z<BZ; },
+  inBounds:(x,z)=>{ const C=typeof window!=='undefined'&&window.__CITY; if(C){ const b=C.bounds; const M=900; return x>b[0]-M&&x<b[2]+M&&z>b[1]-M&&z<b[3]+M; } return x>-BX&&x<BX&&z>-BZ&&z<BZ; },
   flatAt:(x,z)=>Math.abs(h(x,z))<.02,
   /* a lot / block of roads may be built when the whole footprint is flat dry plateau */
   lotOK(cx,cz,r){ r=r||30; const key=cx*131071+cz*7+r; let v=LOTC.get(key); if(v===undefined){ v=API.lotOK0(cx,cz,r); if(LOTC.size>20000) LOTC.clear(); LOTC.set(key,v); } return v; },

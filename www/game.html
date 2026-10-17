@@ -1882,7 +1882,7 @@ function animateRig(parts,dt,inp){
       // straight glide (reference clip): body in one straight line, wings held out flat and still - no flapping
       { const fl=Math.sin(A.t*(inp.moving?3.2:2.2)); P.sL.z=-1.5-.14*fl; P.sR.z=1.5+.14*fl; } P.sL.x=0; P.sR.x=0; P.sL.y=0; P.sR.y=0; P.eL=.02; P.eR=.02;
       P.tLx=0; P.tRx=0; P.kL=0; P.kR=0; P.fL=.55; P.fR=.55; P.chX=0; P.hdX=inp.moving?.55:0; P.hipsY=0;
-    } else if(!inp.moving&&id==='chromastone'){ // Superman hovering in place (Chromastone only) (sketch): body upright, arms down and a little out from the sides, one leg straight, the other knee bent with the foot trailing back, slow float
+    } else if(!inp.moving&&inp.id==='chromastone'){ // Superman hovering in place (Chromastone only) (sketch): body upright, arms down and a little out from the sides, one leg straight, the other knee bent with the foot trailing back, slow float
       const bob=Math.sin(A.t*1.9), sw=Math.sin(A.t*1.3);
       P.hipsY=bob*.05; P.chX=.02; P.hdX=-.04; P.chZ=sw*.015;
       P.sL.x=.08+sw*.04; P.sR.x=.08-sw*.04; P.sL.z=-.5; P.sR.z=.5; P.eL=.12; P.eR=.12;

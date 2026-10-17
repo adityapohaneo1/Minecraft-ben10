@@ -305,3 +305,10 @@ instead of the box anatomy. Ben, Diamondhead, civilians and enemies still use th
 - Mission 01 no longer auto-starts. After 25–70 s of play Grandpa Max gives a random tip and marks the SIGNAL SPOT (70,112) on the map/minimap. Go whenever you like; within 14 units a START button appears disabled, charges for 2 s, then enables. Tapping it triggers Gwen's contact.
 - `www/savegame.js`: single key `omniverse_save_v1` (position, yaw, form, flying, hp/energy, mission state). Autosaves every 4 s and on pause/close. `SaveGame.clear()` wipes it, `__MIS.reset()` resets the mission.
 - Quitting mid-mission restarts at the last mission savepoint (full hp, on the ground); quitting in free roam or after "CHILL SMALL" resumes the exact spot.
+
+## v73 — Fail menu + Mission 02 "Ghost in the Machine"
+- Fail menu (Ben defeated or Rust Bucket destroyed during a mission): Restart mission / From last savepoint / Exit (chill small).
+- `models/rustbucket.glb` is the drivable Rust Bucket (existing arcade car code, `spawnRB` in game.html). Parked at the house spot; it persists in free roam.
+- `www/mission2.js` (plug-in for missions.js): Max calls Ben to the Rust Bucket (charging start button) -> get in -> player-driven chase with scores of flying blade/laser drones firing energy orbs -> hull bar -> at 47% story beat + LEAP OUT button -> Rust Bucket drives away on its own -> 3 drone waves -> find the parked Rust Bucket -> Mission 01 evidence is stolen -> done.
+- Dynamic chase chatter (situational: slow/fast driving, drones close, hits, crashes, real near-collision prediction with traffic, buildings ahead), urgent warnings take priority.
+- Savepoints: mission start, chase start, fight start, find-the-RB.

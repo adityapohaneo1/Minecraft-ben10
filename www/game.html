@@ -480,7 +480,7 @@
 (function(){
 'use strict';
 const LDR=window.LD;
-const SCRIPTS=[['three.min.js',30.3,'THREE ENGINE'],['glb-libs.js',16.3,'MODEL LOADERS'],['models.js',139.7,'CHARACTER MODELS'],['props.js',70.2,'PROPS'],['terrain_assets.js',64.0,'TERRAIN'],['world.js',8.9,'WORLD'],['mapdata.js',18.8,'MAP'],['citydata.js',58.2,'CITY'],['terrain.js',9.6,'TERRAIN'],['citymodel.js',8.9,'CITY'],['cardata.js',47.9,'VEHICLES'],['carmodel.js',7.2,'VEHICLES'],['vfx.js',10.5,'EFFECTS'],['glbbody.js',11.8,'CHARACTER RIGS'],['savegame.js',2,'SAVE DATA'],['missions.js',9,'MISSIONS']];
+const SCRIPTS=[['three.min.js',30.3,'THREE ENGINE'],['glb-libs.js',16.3,'MODEL LOADERS'],['models.js',139.7,'CHARACTER MODELS'],['props.js',70.2,'PROPS'],['terrain_assets.js',64.0,'TERRAIN'],['world.js',8.9,'WORLD'],['mapdata.js',18.8,'MAP'],['citydata.js',58.2,'CITY'],['terrain.js',9.6,'TERRAIN'],['citymodel.js',8.9,'CITY'],['cardata.js',47.9,'VEHICLES'],['carmodel.js',7.2,'VEHICLES'],['vfx.js',10.5,'EFFECTS'],['glbbody.js',11.8,'CHARACTER RIGS'],['savegame.js',2,'SAVE DATA'],['mission2.js',9,'MISSIONS'],['missions.js',9,'MISSIONS']];
 const IMAGES=['textures/cars.jpg','portraits/gwen.png','portraits/grandpa_max.png','vfx/big_hit_6x5.png','vfx/charge_7x6.png','vfx/circle_01.png','vfx/dirt_01.png','vfx/dirt_02.png','vfx/electric_ring_6x5.png','vfx/explosion_01_8x8.png','vfx/explosion_6x5.png','vfx/fire_01.png','vfx/fire_01_8x8.png','vfx/fire_point_6x5.png','vfx/fire_ring_6x5.png','vfx/flame_01_16x4.png','vfx/flare_01.png','vfx/impact_white_6x4.png','vfx/light_01.png','vfx/light_02.png','vfx/lightstreaks_6x5.png','vfx/smoke_01.png','vfx/smoke_05.png','vfx/spark_01.png','vfx/spark_02.png','vfx/spark_03.png','vfx/spark_04.png','vfx/star_01.png','vfx/star_02.png','vfx/star_explosion_6x5.png','vfx/trace_01.png','vfx/trace_02.png','vfx/trace_03.png','vfx/trace_04.png','vfx/trace_05.png','vfx/trace_06.png','vfx/twirl_01.png','vfx/twirl_02.png','vfx/vortex_6x5.png','vfx/wavy_blue_6x5.png','vfx/wavy_purple_6x5.png','vfx/wispy_smoke_01_8x8.png'];
 const MIN_SHOWN=900;
 const W={audio:14,img:7,js:30,init:6,glb:24,warm:19}, P={audio:0,img:0,js:0,init:0,glb:0,warm:0};
@@ -3054,7 +3054,7 @@ function damageEnemy(en, dmg, dirAway, opts){
 
 function updateEnemies(dt){
   enemies.forEach(en=>{
-    if(!en.alive||en.npc) return;
+    if(!en.alive||en.npc||en.chase) return;
     if(en.ice||en.webbed) return;
     const p = en.mesh.position;
     if(en.slotT>0) en.slotT-=dt; if(en.slotCd>0) en.slotCd-=dt; if(en.windT>0) en.windT-=dt;
@@ -5003,9 +5003,12 @@ function removeVehicle(p){
   const i=props.indexOf(p); if(i>=0) props.splice(i,1);
   scene.remove(p.mesh); p.mesh.traverse(o=>{ if(o.material) o.material.dispose(); });
 }
-function carBody(p){ return p.mesh.children[0]; }
+function carBody(p){ return p.bodyMesh||p.mesh.children[0]; }
 function damageVehicle(p,dmg,kind){
   if(!p.veh||p.wreck) return;
+  if(p.mInv) return;                                                          // mission: the Rust Bucket cannot be finished off during the story beats
+  if(p.rv&&window.__MIS&&__MIS.rvGuard) dmg=__MIS.rvGuard(p,dmg);
+  if(dmg<=0) return;
   p.hp-=dmg; const b=carBody(p); if(b){ b.material.emissive.set(0x663311); p.flashT=.14; }
   if(p.hp<=0) wreckVehicle(p);
 }
@@ -5045,6 +5048,7 @@ function carProbeBlocked(p,x,z){
   return false;
 }
 function carCrash(p,speed){
+  if(p.rv&&speed>5&&window.__MIS&&__MIS.rvEvent) try{ __MIS.rvEvent('crash',speed); }catch(e){}
   if(speed>5){ damageVehicle(p,speed*1.7,'crash'); Audio_.crash(); if(p.driver||p===player.driving) shakeCamera(Math.min(.5,speed*.02)); else if(p.mesh.position.distanceTo(player.pos)<30) shakeCamera(.12);
     const m=p.mesh.position; for(let i=0;i<5;i++) debris(m.clone().add(new THREE.Vector3(0,.8,0)),0xffd84a,.16,new THREE.Vector3((Math.random()-.5)*6,Math.random()*4,(Math.random()-.5)*6),.4,true); }
 }
@@ -5061,7 +5065,7 @@ function moveCar(p,dt){
 }
 function nearestCar(maxD){
   let best=null,bd=maxD;
-  for(const p of props){ if(!p.veh||p.wreck||p.flipped||p.flipT>0||p.driver||p.webbed||p===carried||p.state!=='rest') continue;
+  for(const p of props){ if(!p.veh||p.wreck||p.flipped||p.flipT>0||p.driver||p.locked||p.webbed||p===carried||p.state!=='rest') continue;
     const d=Math.hypot(p.mesh.position.x-player.pos.x,p.mesh.position.z-player.pos.z);
     if(d<bd && Math.abs(p.mesh.position.y-player.pos.y)<3){ best=p; bd=d; } }
   return best;
@@ -5082,7 +5086,16 @@ function exitCar(forced){ Audio_.hornHold(false);
   player.pos.set(ex, (ok?groundTopAt(ex,ez,p.by):p.by+2.2)+1, ez); player.vel.set(0,0,0); player.onGround=ok; player.invuln=Math.max(player.invuln,.5);
   player.model.visible=true; player.jumpHeld=false;
 }
-function vehicleButton(){ if(player.driving) exitCar(); else { const c=nearestCar(5.6); if(c) enterCar(c); } }
+function spawnRB(x,z,yaw,keepHp){
+  const old=ENVP.rvVeh; if(old&&props.indexOf(old)>=0){ if(player.driving===old) exitCar(true); removeVehicle(old); }
+  const MA=window.MissionAssets; if(!MA||!MA.rb) return null;
+  const p=makeBoulder(x,groundTopAt(x,z)+CAR_H,z,CAR_S,0xe8d9a0,true);
+  while(p.mesh.children.length) p.mesh.remove(p.mesh.children[0]);
+  const body=MA.rb.clone(true); body.scale.setScalar(MA.rbK/CAR_S); body.position.y=-CAR_H/CAR_S; p.mesh.add(body); body.traverse(o=>{ if(o.isMesh&&!p.bodyMesh){ p.bodyMesh=o; o.material=o.material.clone(); o.castShadow=true; } });
+  p.mesh.rotation.y=yaw||0; p.yaw=yaw||0; p.by=groundTopAt(x,z); p.rv=true; p.hp=p.hpMax=240; p.hw=1.45; p.hl=3.35; p.colH=3.6; p.vt=VTYPES().rv; p.traffic=false;
+  ENVP.rvVeh=p; return p;
+}
+function vehicleButton(){ if(player.driving){ if(window.__MIS&&__MIS.lockExit&&__MIS.lockExit()) return; exitCar(); } else { const c=nearestCar(5.6); if(c) enterCar(c); } }
 function driveTick(dt){
   const p=player.driving;
   updateKeyboardMove();
@@ -5201,7 +5214,7 @@ function updateVehicles(dt){
     if(p.flashT>0){ p.flashT-=dt; if(p.flashT<=0){ const b=carBody(p); if(b&&!p.wreck) b.material.emissive.set(0); } }
     if(p.driver||p===carried||p.state!=='rest'){ /* driven by driveTick / held / thrown by updateProps */ if(p.state==='rest'&&!p.driver) {} }
     const active = p.driver || p.traffic || Math.abs(p.v)>.05 || p.push.lengthSq()>.01 || p.flipT>0 || p.burnT>0 || m.y>p.by+CAR_H+.02;
-    if(!active||dist>110) { if(dist>115 && !p.driver && p!==carried && p.state==='rest') p.despawn=true; if(!active) continue; }
+    if(!active||dist>110) { if(dist>115 && !p.rv && !p.driver && p!==carried && p.state==='rest') p.despawn=true; if(!active) continue; }
     if(p.state!=='rest'||p===carried) continue;
     if(dist>70 && !p.driver && !p.traffic && p.burnT<=0){ continue; } // asleep: far, quiet cars are not simulated
     if(p.traffic && !p.driver) trafficAI(p,dt);
@@ -5575,16 +5588,8 @@ function updatePlayerOnFoot(dt){
     unlockTarget();
     Audio_.death();
     document.getElementById('death-screen').textContent='DEFEATED'; document.getElementById('death-screen').style.display='flex'; shakeCamera(.35);
-    setTimeout(()=>{
-      player.pos.set(0.5, groundTopAt(0.5,0.5)+1, 0.5);
-      player.vel.set(0,0,0);
-      revertToBen(); HP.store={}; HP.sinceHit=99; player.health=BEN.maxHealth; player.energy=BEN.maxEnergy; HP.prev=player.health; OMNI.charge=100; OMNI.lock=0;
-      player.invuln=2.5; player.hurtT=0;
-      enemies.forEach(e=>{ if(!e.npc&&e.alive&&e.mesh.position.distanceTo(player.pos)<40){ e.state='wander'; e.alertedT=0; e.slotT=0; } });   // no spawn-camping
-      document.getElementById('death-screen').textContent='RESPAWNING...';
-      player.alive = true;
-      document.getElementById('death-screen').style.display='none';
-    }, 1400);
+    if(window.__MIS&&__MIS.onDeath&&__MIS.onDeath()){ /* a mission is running: it shows its own fail menu (restart / savepoint / exit) */ }
+    else setTimeout(()=>revivePlayer(0.5,0.5),1400);
   }
 }
 
@@ -5592,6 +5597,17 @@ function updatePlayerOnFoot(dt){
    MINIMAP - heading-up radar; hostile enemies red, gang members orange, locked target ringed
 ========================================================================= */
 const _mm={t:0,cv:null,cx:null};
+function revivePlayer(x,z){
+  if(player.driving) exitCar(true);
+  player.pos.set(x, groundTopAt(x,z)+1, z);
+  player.vel.set(0,0,0);
+  revertToBen(); HP.store={}; HP.sinceHit=99; player.health=BEN.maxHealth; player.energy=BEN.maxEnergy; HP.prev=player.health; OMNI.charge=100; OMNI.lock=0;
+  player.invuln=2.5; player.hurtT=0;
+  enemies.forEach(e=>{ if(!e.npc&&e.alive&&!e.mission&&e.mesh.position.distanceTo(player.pos)<40){ e.state='wander'; e.alertedT=0; e.slotT=0; } });   // no spawn-camping
+  document.getElementById('death-screen').textContent='RESPAWNING...';
+  player.alive = true; player.flying=false;
+  document.getElementById('death-screen').style.display='none';
+}
 function updateMinimap(dt){
   _mm.t-=dt; if(_mm.t>0) return; _mm.t=.1;
   try{
@@ -5760,7 +5776,7 @@ bindBtn('cam-btn', ()=>{ if(!PAUSED) setCamFree(!camMode.free); });
 
 let PAUSED=false, gameOn=false, pauseHist=false, ignorePop=0, hudEdit=null;
 // Missions (www/missions.js): the engine gets exactly the pieces of the game it needs
-try{ if(window.MissionSystem) window.MissionSystem({THREE,scene,camera,player,enemies,VFX,Audio_,colliders,groundTopAt:(x,z,fy)=>groundTopAt(x,z,fy),spawnEnemy:(t,x,z)=>makeEnemy(t,x,z),getPortrait:k=>getPortraitCanvas(k),rv:()=>ENVP.RV_POS,playing:()=>gameOn&&!PAUSED&&player.alive,snapshot:()=>worldSnapshot(),SaveGame:window.SaveGame}); }catch(e){ console.warn('missions',e); }
+try{ if(window.MissionSystem) window.MissionSystem({THREE,scene,camera,player,enemies,VFX,Audio_,colliders,groundTopAt:(x,z,fy)=>groundTopAt(x,z,fy),spawnEnemy:(t,x,z)=>makeEnemy(t,x,z),getPortrait:k=>getPortraitCanvas(k),rv:()=>ENVP.RV_POS,playing:()=>gameOn&&!PAUSED&&player.alive,snapshot:()=>worldSnapshot(),SaveGame:window.SaveGame,props,blockedAt:(x,z,y)=>blockedAt(x,z,y,true),carBlocked:(p,x,z)=>carProbeBlocked(p,x,z),moveCar,damageVehicle,enterCar,exitCar,vehicleHit,spawnRB,rbVeh:()=>ENVP.rvVeh||null,revive:revivePlayer,applySnap,shake:v=>shakeCamera(v),flash:()=>flashDamage(),banner:t=>bannerText(t),driving:()=>player.driving,enemyGroundY,airY:(x,z)=>groundTopAt(x,z)}); }catch(e){ console.warn('missions',e); }
 const pausePage=document.getElementById('pause-page');
 const ppShow=id=>{ ['pp-main','pp-opts'].forEach(k=>document.getElementById(k).style.display=(k===id?'flex':'none')); document.getElementById('pp-hudbar').style.display='none'; pausePage.classList.remove('editing'); };
 function releaseInputs(){ AIM.on=false; player.csBlastHeld=false; moveInput.x=0; moveInput.y=0; player.flameHeld=false; player.sprayHeld=false; player.atkHeld=false; player.superHeld=false; player.rollHeld=false; player.runLatch=false; joyId=null; resetJoy(); joyZone.classList.remove('run','held'); camTouchId=null; drv.l=drv.r=drv.g=false; document.querySelectorAll('.steer').forEach(x=>x.classList.remove('on')); for(const k in keys) keys[k]=false; try{ if(carried===null) {} }catch(e){} }
@@ -5842,6 +5858,10 @@ function restoreSave(){
   if(!window.SaveGame) return;
   // a mission in progress restarts from its last savepoint; otherwise you resume exactly where you stopped
   const cp=(window.__MIS&&__MIS.resumePoint)?__MIS.resumePoint():null, w=cp||SaveGame.get('world'); if(!w||typeof w.x!=='number') return;
+  applySnap(w,!!cp);
+}
+function applySnap(w,cp){
+  if(player.driving) exitCar(true);
   if(w.form&&w.form!=='ben'){ const def=ALIENS.find(a=>a.id===w.form); if(def) setForm(def,w.form,true); }
   player.pos.set(w.x, Math.max(typeof w.y==='number'?w.y:0, groundTopAt(w.x,w.z)+1.1), w.z); player.vel.set(0,0,0);
   if(typeof w.yaw==='number') player.yaw=w.yaw; if(typeof w.pitch==='number') player.pitch=Math.max(-1.3,Math.min(1.25,w.pitch));

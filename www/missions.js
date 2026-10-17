@@ -11,11 +11,12 @@ const KEY='omniverse_missions_v1';
 const b2b=s=>{ const bin=atob(s), n=bin.length, u=new Uint8Array(n); for(let i=0;i<n;i++) u[i]=bin.charCodeAt(i); return u.buffer; };
 
 /* ---------- model assets (blade drone, Psyphon, E-11 blaster) are parsed once, then cloned ---------- */
-const MA=window.MissionAssets={ blade:null, psyphon:null, gun:null, bladeAnims:[], ready:false, T:null,
+const MA=window.MissionAssets={ rb:null, rbK:.8, rbFlip:Math.PI, blade:null, psyphon:null, gun:null, bladeAnims:[], ready:false, T:null,
   async load(THREE){
     this.T=THREE; const D=window.__GLB_DATA||{};
     const parse=key=>new Promise(res=>{ if(!D[key]){ res(null); return; } try{ new THREE.GLTFLoader().parse(b2b(D[key]),'',g=>{ delete D[key]; res(g); },()=>{ delete D[key]; res(null); }); }catch(e){ res(null); } });
-    const [b,p,g]=await Promise.all([parse('blade_drone'),parse('psyphon'),parse('e11_blaster')]);
+    const [b,p,g,rbG]=await Promise.all([parse('blade_drone'),parse('psyphon'),parse('e11_blaster'),parse('rustbucket')]);
+    if(rbG){ const sc=rbG.scene; sc.updateMatrixWorld(true); const bb=new THREE.Box3().setFromObject(sc), c=bb.getCenter(new THREE.Vector3()), wrap=new THREE.Group(); sc.position.set(-c.x,-bb.min.y,-c.z); sc.rotation.y=this.rbFlip||0; wrap.add(sc); this.mats(sc,null,false); this.rb=wrap; this.rbDims=bb.getSize(new THREE.Vector3()); this.rbK=6.9/Math.max(this.rbDims.x,this.rbDims.z); }
     if(b){ this.blade=b.scene; this.bladeAnims=b.animations||[]; }
     if(p) this.psyphon=p.scene; if(g) this.gun=g.scene; this.ready=true;
   },
@@ -82,8 +83,15 @@ window.MissionSystem=function(G){
   #mdone h2{margin:0 0 4px;font:900 28px sans-serif;letter-spacing:.2em;color:#39ff8a;text-shadow:0 0 14px rgba(57,255,138,.6)}
   #mdone h3{margin:0 0 18px;font:700 13px sans-serif;letter-spacing:.3em;color:#9fd8b6}
   #mdone ul{list-style:none;margin:0 0 22px;padding:0;font:700 15px sans-serif}
+  #mdone li.bad{color:#ff9a8a}#mdone li.bad:before{content:"\\2717";color:#ff6a5a}
   #mdone li{margin:7px 0;color:#d8ffe8}#mdone li:before{content:"\\2713";color:#39ff8a;margin-right:10px;font-weight:900}
   #mdone button{padding:12px 34px;border-radius:26px;border:2px solid #39ff8a;background:#0b2a1c;color:#d8ffe8;font:800 14px sans-serif;letter-spacing:.14em}
+  #mfail{position:fixed;z-index:420;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,4,.82);font-family:sans-serif}
+  #mfail .box{width:min(340px,86vw);padding:18px 20px 16px;border-radius:20px;background:rgba(4,20,13,.97);border:1px solid #c44;border-top:4px solid #ff5a4a;text-align:center;color:#eaffef;animation:mpop .25s ease-out;box-shadow:0 14px 50px rgba(0,0,0,.7)}
+  #mfail h4{margin:0 0 4px;color:#ff8a7a;letter-spacing:.3em;font:800 11px sans-serif} #mfail h2{margin:0 0 6px;font:900 20px sans-serif;letter-spacing:.06em}
+  #mfail p{margin:0 0 8px;font:500 12px/1.35 sans-serif;color:#9fc4af}
+  #mfail button{display:block;width:100%;margin:7px 0 0;padding:12px 14px;border-radius:22px;border:2px solid #39ff8a;background:#0b2a1c;color:#d8ffe8;font:800 13px sans-serif;letter-spacing:.08em}
+  #mfail button.go{background:linear-gradient(180deg,#39ff8a,#17b862);color:#032a14;border-color:#bfffd9} #mfail button.s{border-color:#7a8a80;color:#b6c8be;background:#101a15} #mfail button:active{transform:scale(.97)}
   @keyframes mpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,210,74,.55)}50%{box-shadow:0 0 0 10px rgba(255,210,74,0)}}
   @keyframes mpop{0%{transform:translate(-50%,14px) scale(.96);opacity:0}100%{transform:translate(-50%,0) scale(1);opacity:1}}
   @keyframes mring{0%,100%{box-shadow:0 0 0 0 var(--c,#39ff8a)}50%{box-shadow:0 0 0 5px transparent}}
@@ -114,33 +122,39 @@ window.MissionSystem=function(G){
   /* ---------- save / restore (dedicated save file: www/savegame.js) ---------- */
   // Runtime state lives in S.m01; what is written to disk is the last SAVEPOINT (cp*): progress made since the last
   // objective transition is not kept, so leaving mid-mission restarts you from the last savepoint, at the place and in the form you had then.
-  const SG=G.SaveGame;
+  const SG=G.SaveGame; let M2=null, pendingM2=null, failOpen=false;
   let S={ m01:{ status:'new', obj:-1, evidence:[], dead:[], paused:false, cp:null, cpObj:-1, cpDead:[], cpEvidence:[] } };
-  { let j=SG&&SG.get('missions'); if(!j){ try{ j=JSON.parse(localStorage.getItem('omniverse_missions_v1')||'null'); }catch(e){} }
-    if(j&&j.m01){ const q=j.m01, s=S.m01; s.status=q.status==='offered'||q.status==='active'||q.status==='done'?q.status:'new'; s.paused=!!q.paused; s.cp=q.cp||null;
+  { let j=SG&&SG.get('missions'); pendingM2=j&&j.m02||null; if(!j){ try{ j=JSON.parse(localStorage.getItem('omniverse_missions_v1')||'null'); }catch(e){} }
+    if(j&&j.m01){ const q=j.m01, s=S.m01; s.status=q.status==='offered'||q.status==='active'||q.status==='done'?q.status:'new'; s.paused=!!q.paused; s.cp=q.cp||null; s.cp0=q.cp0||null;
       s.obj=typeof q.obj==='number'?q.obj:-1; s.evidence=(q.evidence||[]).slice(); s.dead=(q.dead||[]).slice(); s.cpObj=s.obj; s.cpDead=s.dead.slice(); s.cpEvidence=s.evidence.slice();
       if(s.status==='active'&&(s.obj<0||s.obj>5)) s.obj=0; } }
   const save=()=>{
     const s=S.m01;
     if(s.status==='active'&&s.obj>=0&&s.obj<=5&&s.cpObj!==s.obj){       // a new SAVEPOINT: stable objective reached
       s.cpObj=s.obj; s.cpDead=s.dead.slice(); s.cpEvidence=s.evidence.slice(); try{ s.cp=G.snapshot(); s.cp.flying=false; s.cp.hp=1; s.cp.en=1; }catch(e){}
+      if(s.obj===0||!s.cp0) s.cp0=s.cp;
       if(s.obj>0) setTimeout(()=>{ try{ toast('MISSION SAVEPOINT'); }catch(e){} },900); }
     if(s.status==='done'){ s.cpObj=100; s.cpDead=s.dead.slice(); s.cpEvidence=s.evidence.slice(); }
     if(s.status==='offered'||s.status==='new'){ s.cpObj=-1; s.cpDead=[]; s.cpEvidence=[]; }
-    if(SG){ SG.set('missions',{ m01:{ status:s.status, obj:s.cpObj, evidence:s.cpEvidence, dead:s.cpDead, paused:s.paused, cp:s.cp } }); SG.flush(); }
+    if(M2) M2.beforeSave();
+    if(SG){ SG.set('missions',{ m01:{ status:s.status, obj:s.cpObj, evidence:s.cpEvidence, dead:s.cpDead, paused:s.paused, cp:s.cp, cp0:s.cp0 }, m02:M2?M2.persist():pendingM2 }); SG.flush(); }
   };
   window.__MIS={ S, reset(){ if(SG) SG.clear(); else { try{ localStorage.removeItem('omniverse_missions_v1'); }catch(e){} } location.reload(); }, update:()=>{}, marker:()=>null,
-    resumePoint:()=>{ const s=S.m01; return (s.status==='active'&&!s.paused&&s.cp)?s.cp:null; } };
+    resumePoint:()=>{ const s=S.m01; if(s.status==='active'&&!s.paused&&s.cp) return s.cp; if(M2&&M2.S.status==='active'&&!M2.S.paused&&M2.S.cp) return M2.S.cp; return null; } };
 
   /* ---------- story dialogue (never blocks play: lines auto-advance, tap to skip) ---------- */
   const PEOPLE={ BEN:{n:'BEN',role:'Hero',c:'#39ff8a'}, GWEN:{n:'GWEN',role:'on comms',c:'#ff7ad9',img:'portraits/gwen.png'}, MAX:{n:'GRANDPA MAX',role:'on comms',c:'#ffd24a',img:'portraits/grandpa_max.png'} };
   const DQ=[]; let dCur=null, dT=0, dTy=0, dFull='', dTxt=null;
   function say(lines,cb){ lines.forEach((l,i)=>DQ.push({who:l[0],t:l[1],cb:i===lines.length-1?cb:null})); if(!dCur&&DQ.length) dShow(DQ.shift()); }
+  function portraitEl(who,size){
+    const P=PEOPLE[who]; let pic; const st='flex:0 0 '+size+'px;width:'+size+'px;height:'+size+'px;border-radius:50%;border:2px solid '+P.c;
+    if(P.img){ pic=el('img'); pic.src=P.img; pic.style.cssText=st+';object-fit:cover'; pic.onerror=()=>{ const s=el('div',null,'ph',P.n[0]); pic.replaceWith(s); }; }
+    else { pic=el('div',null,'ph','B'); try{ const pc=G.getPortrait('ben'); if(pc){ const c=el('canvas'); c.width=c.height=size*2; c.getContext('2d').drawImage(pc,0,0,size*2,size*2); c.style.cssText=st; pic=c; } }catch(e){} }
+    return pic;
+  }
   function dShow(l){
     dCur=l; dFull=l.t; dTy=0; dT=Math.max(3.2,Math.min(7,l.t.length*.06))+l.t.length/45; const P=PEOPLE[l.who]; dlg.style.setProperty('--c',P.c);
-    let pic; if(P.img){ pic=el('img'); pic.src=P.img; pic.style.cssText='flex:0 0 54px;width:54px;height:54px;border-radius:50%;border:2px solid '+P.c+';object-fit:cover'; pic.onerror=()=>{ const s=el('div',null,'ph',P.n[0]); pic.replaceWith(s); }; }
-    else { pic=el('div',null,'ph','B'); try{ const pc=G.getPortrait('ben'); if(pc){ const c=el('canvas'); c.width=c.height=108; c.getContext('2d').drawImage(pc,0,0,108,108); c.style.cssText='flex:0 0 54px;width:54px;height:54px;border-radius:50%;border:2px solid '+P.c; pic=c; } }catch(e){} }
-    dlg.innerHTML=''; dlg.appendChild(pic); const t=el('div',null,null,'<div class="who">'+P.n+'<em>'+P.role+'</em></div><div></div>'); dTxt=t.lastChild; dlg.appendChild(t); dlg.appendChild(el('div',null,'tap','NEXT \u25B8')); dlg.style.display='flex';
+    dlg.innerHTML=''; dlg.appendChild(portraitEl(l.who,54)); const t=el('div',null,null,'<div class="who">'+P.n+'<em>'+P.role+'</em></div><div></div>'); dTxt=t.lastChild; dlg.appendChild(t); dlg.appendChild(el('div',null,'tap','NEXT \u25B8')); dlg.style.display='flex';
     dlg.style.animation='none'; void dlg.offsetWidth; dlg.style.animation='';
   }
   function dNext(){ if(dCur&&dCur.cb){ const f=dCur.cb; dCur=null; try{ f(); }catch(e){ console.warn(e); } } dCur=null; if(DQ.length) dShow(DQ.shift()); else dlg.style.display='none'; }
@@ -227,7 +241,8 @@ window.MissionSystem=function(G){
   let marker=null; // {x,z,label}
   const m=()=>S.m01;
   function objective(){
-    const s=m(); if(s.status==='offered') return {title:'GRANDPA MAX',t:'Check out the spot Grandpa Max marked',mk:{x:SPOT.x,z:SPOT.z,label:'SIGNAL SPOT'}};
+    const s=m(); if(s.status==='done'&&M2&&M2.owns()) return M2.objective();
+    if(s.status==='offered') return {title:'GRANDPA MAX',t:'Check out the spot Grandpa Max marked',mk:{x:SPOT.x,z:SPOT.z,label:'SIGNAL SPOT'}};
     if(s.status!=='active') return null;
     switch(s.obj){
       case 0: return {t:'Investigate the drone attack',mk:{x:SITE_A.x,z:SITE_A.z,label:'ATTACK SITE'}};
@@ -238,13 +253,14 @@ window.MissionSystem=function(G){
       case 5: { const r=G.rv(); return {t:'Report to Grandpa Max at the Rust Bucket',mk:{x:r.x,z:r.z,label:'RUST BUCKET'}}; }
     } return null;
   }
+  function pausedName(){ if(m().status==='done') return (M2&&M2.S.status==='active'&&M2.S.paused)?'Ghost in the Machine':null; return (m().status==='active'&&m().paused)?'Unwanted Visitors':null; }
   function refreshHud(){
     const s=m(); const o=objective();
-    if(s.status==='active'&&s.paused){ tr.className='paused'; tr.style.display='block'; tr.innerHTML='<b>MISSION PAUSED</b>Tap to resume: Unwanted Visitors'; marker=null; return; }
+    const pz=pausedName(); if(pz){ tr.className='paused'; tr.style.display='block'; tr.innerHTML='<b>MISSION PAUSED</b>Tap to resume: '+pz; marker=null; return; }
     if(!o){ tr.style.display='none'; marker=null; return; }
     tr.className=''; tr.style.display='block'; tr.innerHTML='<b>'+(o.title||'UNWANTED VISITORS')+'</b>'+o.t; marker=o.mk;
   }
-  tr.addEventListener('click',()=>{ if(m().status==='active'&&m().paused){ m().paused=false; save(); refreshHud(); toast('MISSION RESUMED'); } });
+  tr.addEventListener('click',()=>{ if(m().status==='done'){ if(M2&&M2.S.status==='active'&&M2.S.paused){ M2.resumeFromPause(); } return; } if(m().status==='active'&&m().paused){ m().paused=false; save(); refreshHud(); toast('MISSION RESUMED'); } });
   const _v=new THREE.Vector3();
   function placeWay(){
     if(!marker||!G.playing()){ way.style.display='none'; return; }
@@ -254,7 +270,7 @@ window.MissionSystem=function(G){
     const off=behind||px<mx||px>W-mx||py<my||py>H-my; px=Math.max(mx,Math.min(W-mx,px)); py=Math.max(my,Math.min(H-my,py)); if(behind){ py=Math.max(py,H*.5); }
     way.style.display='block'; way.style.transform='translate('+px.toFixed(0)+'px,'+py.toFixed(0)+'px)'; way.lastChild.textContent=marker.label+' '+Math.round(d*.73)+'m'; way.firstChild.style.opacity=off?'.8':'1';
   }
-  window.__MIS.marker=()=>marker&&!m().paused?{x:marker.x,z:marker.z,label:marker.label}:null;
+  window.__MIS.marker=()=>marker&&!pausedName()?{x:marker.x,z:marker.z,label:marker.label}:null;
 
   /* ---------- chill prompt ---------- */
   let pendingChill=null;
@@ -318,6 +334,7 @@ window.MissionSystem=function(G){
     scene.add(g); beacon=g; addProp(g);
   }
   function startMission(){
+    if(M2&&M2.offered()){ M2.start(); return; }
     const s=m(); if(s.status!=='offered'||chargeT<2) return; s.status='active'; s.obj=0; sb.style.display='none';
     if(beacon){ scene.remove(beacon); beacon=null; } save(); ensureWorld(); refreshHud();
     say([['GWEN','Ben! Grandpa Max said you reached the spot. Good, because we have trouble. Something is attacking a nearby area.'],['BEN','Finally, something interesting!'],['GWEN','Just investigate first. Do not rush in without thinking.'],['BEN','You know me better than that.'],['GWEN','Exactly! I have put the location on your map.']],()=>toast('NEW MISSION: UNWANTED VISITORS'));
@@ -326,7 +343,8 @@ window.MissionSystem=function(G){
   addEventListener('keydown',e=>{ if(e.code==='KeyG'&&G.playing()) startMission(); });
   function step(dt){
     if(!G.playing()){ tr.style.visibility='hidden'; way.style.display='none'; btn.style.display='none'; sb.style.display='none'; return; }
-    tr.style.visibility='visible'; const s=m(); clock+=dt;
+    if(failOpen) return;
+    tr.style.visibility='visible'; const s=m(); clock+=dt; if(M2) M2.tick(dt);
     if(dCur){ if(dTxt&&dTy<dFull.length){ dTy=Math.min(dFull.length,dTy+dt*46); dTxt.textContent=dFull.slice(0,Math.floor(dTy)); } else if(chill.style.display!=='block'){ dT-=dt; if(dT<=0) dNext(); } }
     if(!dCur&&DQ.length) dShow(DQ.shift());
     if(pendingChill&&!talking()){ const c=pendingChill; pendingChill=null; showChill(c); }
@@ -357,6 +375,7 @@ window.MissionSystem=function(G){
     }
     sb.style.display='none';
     ensureWorld();
+    if(s.status==='done'&&M2){ M2.step(dt); return; }
     if(s.status!=='active'){ btn.style.display='none'; way.style.display='none'; return; }
     if(!s.paused){
       const dA=Math.hypot(player.pos.x-SITE_A.x,player.pos.z-SITE_A.z), dS=Math.hypot(player.pos.x-SITE_S.x,player.pos.z-SITE_S.z);
@@ -371,6 +390,42 @@ window.MissionSystem=function(G){
   }
   // the RV interaction sits next to the Rust Bucket
   IA.push({id:'max',get x(){ return G.rv().x; },get z(){ return G.rv().z; },get y(){ return gy(G.rv().x,G.rv().z); },r:7,label:'\u{1F4AC} TALK TO GRANDPA',enabled:()=>m().status==='active'&&!m().paused&&m().obj===5,use:useMax});
+  /* ---------- fail menu: Ben defeated / Rust Bucket destroyed -> restart | last savepoint | exit (chill small) ---------- */
+  const fail=el('div','mfail'); document.body.appendChild(fail);
+  ['touchstart','mousedown','pointerdown'].forEach(n=>fail.addEventListener(n,e=>e.stopPropagation(),{passive:true}));
+  const curKey=()=>m().status==='done'?'m02':'m01';
+  const runningNow=()=>{ const s=m(); if(s.status==='active'&&!s.paused) return true; return !!(s.status==='done'&&M2&&M2.active()); };
+  function clearM01Enemies(){ for(const e of enemies.slice()){ if(e.mission&&!e.m2){ const k=enemies.indexOf(e); if(k>=0) enemies.splice(k,1); try{ scene.remove(e.mesh); }catch(x){} e.alive=false; } } for(const k in groups) delete groups[k]; }
+  function revive(snap){ G.revive(snap?snap.x:.5,snap?snap.z:.5); if(snap) G.applySnap(snap,true); }
+  function showFail(reason){
+    if(failOpen) return; failOpen=true; chill.style.display='none'; dlg.style.display='none'; DQ.length=0; dCur=null; pendingChill=null;
+    try{ document.getElementById('death-screen').style.display='none'; }catch(e){}
+    fail.innerHTML='<div class="box"><h4>MISSION FAILED</h4><h2></h2><p>Do not worry, Ben. Pick how you want to get back in.</p><button type="button" data-k="start" class="go">\u21BB RESTART MISSION</button><button type="button" data-k="cp">\u2691 FROM THE LAST SAVEPOINT</button><button type="button" data-k="exit" class="s">\u263E EXIT (CHILL SMALL)</button></div>';
+    fail.querySelector('h2').textContent=reason||'BEN WAS DEFEATED'; fail.style.display='flex';
+    fail.querySelectorAll('button').forEach(b=>{ const f=()=>choose(b.dataset.k); b.onclick=f; });
+  }
+  function choose(k){
+    fail.style.display='none'; failOpen=false;
+    if(curKey()==='m02'){ if(k==='exit') M2.pauseAndExit(); else M2.restart(k); refreshHud(); return; }
+    const s=m();
+    if(k==='exit'){ clearM01Enemies(); s.paused=true; save(); revive(s.cp); refreshHud(); toast('TAKING IT EASY. TAP THE BANNER TO RESUME'); return; }
+    clearM01Enemies();
+    if(k==='start'){ s.obj=0; s.dead=[]; s.evidence=[]; s.cpObj=0; s.cpDead=[]; s.cpEvidence=[]; s.cp=s.cp0||s.cp; }
+    else { s.obj=Math.max(0,s.cpObj); s.dead=s.cpDead.slice(); s.evidence=s.cpEvidence.slice(); }
+    if(comp&&comp.open&&s.obj<=2) s.obj=3;
+    save(); revive(s.cp); refreshHud(); toast(k==='start'?'MISSION RESTARTED':'BACK AT THE SAVEPOINT');
+  }
+  window.__MIS.onDeath=()=>{ if(!runningNow()) return false; setTimeout(()=>showFail('BEN WAS DEFEATED'),1100); return true; };
+  window.__MIS.fail=showFail; window.__MIS.failChoose=choose;
+
+  /* ---------- Mission 02 plug-in ---------- */
+  if(window.Mission2){
+    const A={G,THREE,scene,camera,player,enemies,VFX,Audio_,el,say,toast,talking,PEOPLE,portraitEl,save,refreshHud,placeWay,sb,btn,way,fail:showFail,
+      m01Done:()=>S.m01.status==='done', doneOpen:()=>done.style.display==='flex', evidence:()=>S.m01.evidence.slice(), assetsReady:()=>MA.ready&&!!MA.rb,
+      showDone:html=>{ done.innerHTML=html; done.style.display='flex'; done.querySelector('button').onclick=()=>{ done.style.display='none'; }; try{ Audio_.menu&&Audio_.menu(false); }catch(e){} }};
+    M2=window.Mission2(A); M2.load(pendingM2); window.__MIS.m2=M2;
+    window.__MIS.rvEvent=(k,v)=>M2.rvEvent(k,v); window.__MIS.rvGuard=(p,d)=>M2.rvGuard(p,d); window.__MIS.lockExit=()=>M2.lockExit();
+  }
   window.__MIS.update=step;
   window.__MIS.sites={SITE_A,SITE_S,DOOR};
   window.__MIS.dbg={ offerNow(){ offerAt=-1; }, get charge(){ return chargeT; }, get comp(){ return comp; }, get wreck(){ return wreck; }, get term(){ return term; }, say, spawnGroup, GA, GB, S:()=>S };

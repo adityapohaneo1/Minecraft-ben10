@@ -69,10 +69,10 @@ window.MissionSystem=function(G){
   #mdlg canvas,#mdlg .ph{flex:0 0 46px;width:46px;height:46px;border-radius:50%;border:2px solid #39ff8a;background:#0b2a1c;object-fit:cover;display:flex;align-items:center;justify-content:center;font:800 18px sans-serif;color:#39ff8a}
   #mdlg .who{color:#39ff8a;font:800 10px sans-serif;letter-spacing:.14em;margin-bottom:2px}
   #mdlg .tap{position:absolute;right:8px;bottom:3px;font:700 9px sans-serif;color:#6fa88a;letter-spacing:.1em}
-  #btn-interact{position:fixed;z-index:26;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,14px)) + 78px);display:none;min-width:130px;padding:11px 18px;border-radius:26px;border:2px solid #ffd24a;background:rgba(30,22,0,.88);color:#ffe58a;font:800 13px sans-serif;letter-spacing:.1em;text-align:center;box-shadow:0 0 14px rgba(255,210,74,.35)}
+  #btn-interact{position:fixed;z-index:26;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,14px)) + 112px);display:none;min-width:130px;padding:11px 18px;border-radius:26px;border:2px solid #ffd24a;background:rgba(30,22,0,.88);color:#ffe58a;font:800 13px sans-serif;letter-spacing:.1em;text-align:center;box-shadow:0 0 14px rgba(255,210,74,.35)}
   #btn-interact:active{background:#ffd24a;color:#201600}
-  #mstart{position:fixed;z-index:26;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,14px)) + 78px);display:none;min-width:190px;padding:12px 22px;border-radius:28px;border:2px solid #ffd24a;color:#ffe58a;font:800 13px sans-serif;letter-spacing:.12em;text-align:center;background:linear-gradient(90deg,rgba(255,210,74,.45) var(--p,0%),rgba(30,22,0,.88) var(--p,0%));overflow:hidden}
-  #mstart:disabled{opacity:.75;border-color:#8a7a3a;color:#c9b86a}
+  #mstart{position:fixed;z-index:26;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,14px)) + 112px);display:none;min-width:190px;padding:12px 22px;border-radius:28px;border:2px solid #ffd24a;color:#ffe58a;font:800 13px sans-serif;letter-spacing:.12em;text-align:center;background:linear-gradient(90deg,rgba(255,210,74,.45) var(--p,0%),rgba(30,22,0,.88) var(--p,0%));overflow:hidden}
+  #mstart:disabled{opacity:1;border-color:#b89a38;color:#fff3c4;text-shadow:0 1px 3px #000,0 0 6px #000}
   #mstart.ready{background:#ffd24a;color:#201600;box-shadow:0 0 18px rgba(255,210,74,.6)}
   #mchill{position:fixed;z-index:28;left:50%;top:40%;transform:translate(-50%,-50%);display:none;padding:12px 16px 14px;background:rgba(4,20,13,.94);border:1px solid #1d8a52;border-top:3px solid #ffd24a;color:#e8fff1;font:700 13px sans-serif;text-align:center;min-width:230px}
   #mchill h4{margin:0 0 9px;color:#ffd24a;letter-spacing:.14em;font-size:11px}
@@ -84,6 +84,24 @@ window.MissionSystem=function(G){
   #mdone ul{list-style:none;margin:0 0 22px;padding:0;font:700 15px sans-serif}
   #mdone li{margin:7px 0;color:#d8ffe8}#mdone li:before{content:"\\2713";color:#39ff8a;margin-right:10px;font-weight:900}
   #mdone button{padding:12px 34px;border-radius:26px;border:2px solid #39ff8a;background:#0b2a1c;color:#d8ffe8;font:800 14px sans-serif;letter-spacing:.14em}
+  @keyframes mpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,210,74,.55)}50%{box-shadow:0 0 0 10px rgba(255,210,74,0)}}
+  @keyframes mpop{0%{transform:translate(-50%,14px) scale(.96);opacity:0}100%{transform:translate(-50%,0) scale(1);opacity:1}}
+  @keyframes mring{0%,100%{box-shadow:0 0 0 0 var(--c,#39ff8a)}50%{box-shadow:0 0 0 5px transparent}}
+  #mdlg{border-radius:16px;border-color:var(--c,#1d8a52);box-shadow:0 6px 26px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04) inset;animation:mpop .22s ease-out;font-size:14px;padding:10px 14px 24px;width:min(580px,78vw)}
+  #mdlg img,#mdlg canvas,#mdlg .ph{border-color:var(--c,#39ff8a)!important;animation:mring 1.4s infinite;flex:0 0 54px!important;width:54px!important;height:54px!important}
+  #mdlg .who{color:var(--c,#39ff8a);font-size:11px}
+  #mdlg .who em{font-style:normal;color:#8fb3a0;letter-spacing:.06em;font-weight:600;margin-left:6px;text-transform:none}
+  #mdlg .tap{right:12px;bottom:6px;font-size:10px;color:#ffe58a;background:rgba(255,210,74,.14);border:1px solid rgba(255,210,74,.5);border-radius:10px;padding:1px 9px}
+  #mstart:not(:disabled){animation:mpulse 1.2s infinite}
+  #btn-interact{border-radius:30px;padding:12px 22px;animation:mpulse 1.5s infinite}
+  #mchill{border-radius:20px;min-width:260px;max-width:78vw;animation:mpop .25s ease-out;padding:16px 18px 16px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  #mchill .big{font:900 19px sans-serif;color:#eaffef;letter-spacing:.04em;margin-bottom:3px}
+  #mchill .sub{font:500 12px/1.35 sans-serif;color:#9fc4af;margin:0 0 6px}
+  #mchill button{padding:12px 14px;font-size:13px}
+  #mchill button:active{transform:scale(.97)}
+  #mchill #mc-go{background:linear-gradient(180deg,#39ff8a,#17b862);color:#032a14;border-color:#bfffd9}
+  #mtoast{border-radius:14px;background:linear-gradient(90deg,rgba(4,20,13,.92),rgba(30,26,4,.92))}
+  #mtrack{border-radius:10px}
   @media (max-height:420px){#mdlg{width:min(480px,56vw);padding:6px 10px}#mdone h2{font-size:22px}#mdone ul{margin-bottom:12px;font-size:13px}}
   `; document.head.appendChild(css);
   const tt=el('div','mtoast'); document.body.appendChild(tt); let ttT=0; const toast=t=>{ tt.textContent=t; tt.style.opacity='1'; clearTimeout(ttT); ttT=setTimeout(()=>{ tt.style.opacity='0'; },2600); };
@@ -115,17 +133,19 @@ window.MissionSystem=function(G){
     resumePoint:()=>{ const s=S.m01; return (s.status==='active'&&!s.paused&&s.cp)?s.cp:null; } };
 
   /* ---------- story dialogue (never blocks play: lines auto-advance, tap to skip) ---------- */
-  const PEOPLE={ BEN:{n:'BEN',c:'#39ff8a'}, GWEN:{n:'GWEN',img:'portraits/gwen.png'}, MAX:{n:'GRANDPA MAX',img:'portraits/grandpa_max.png'} };
-  const DQ=[]; let dCur=null, dT=0, dDone=null;
-  function say(lines,cb){ lines.forEach((l,i)=>DQ.push({who:l[0],t:l[1],cb:i===lines.length-1?cb:null})); }
+  const PEOPLE={ BEN:{n:'BEN',role:'Hero',c:'#39ff8a'}, GWEN:{n:'GWEN',role:'on comms',c:'#ff7ad9',img:'portraits/gwen.png'}, MAX:{n:'GRANDPA MAX',role:'on comms',c:'#ffd24a',img:'portraits/grandpa_max.png'} };
+  const DQ=[]; let dCur=null, dT=0, dTy=0, dFull='', dTxt=null;
+  function say(lines,cb){ lines.forEach((l,i)=>DQ.push({who:l[0],t:l[1],cb:i===lines.length-1?cb:null})); if(!dCur&&DQ.length) dShow(DQ.shift()); }
   function dShow(l){
-    dCur=l; dT=Math.max(2.6,Math.min(6,l.t.length*.055)); const P=PEOPLE[l.who];
-    let pic; if(P.img){ pic=el('img'); pic.src=P.img; pic.style.cssText='flex:0 0 46px;width:46px;height:46px;border-radius:50%;border:2px solid #39ff8a;object-fit:cover'; pic.onerror=()=>{ const s=el('div',null,'ph',P.n[0]); pic.replaceWith(s); }; }
-    else { pic=el('div',null,'ph','B'); try{ const pc=G.getPortrait('ben'); if(pc){ const c=el('canvas'); c.width=c.height=92; c.getContext('2d').drawImage(pc,0,0,92,92); c.style.cssText='flex:0 0 46px;width:46px;height:46px;border-radius:50%;border:2px solid #39ff8a'; pic=c; } }catch(e){} }
-    dlg.innerHTML=''; dlg.appendChild(pic); const t=el('div',null,null,'<div class="who">'+P.n+'</div><div></div>'); t.lastChild.textContent=l.t; dlg.appendChild(t); dlg.appendChild(el('div',null,'tap','TAP')); dlg.style.display='flex';
+    dCur=l; dFull=l.t; dTy=0; dT=Math.max(3.2,Math.min(7,l.t.length*.06))+l.t.length/45; const P=PEOPLE[l.who]; dlg.style.setProperty('--c',P.c);
+    let pic; if(P.img){ pic=el('img'); pic.src=P.img; pic.style.cssText='flex:0 0 54px;width:54px;height:54px;border-radius:50%;border:2px solid '+P.c+';object-fit:cover'; pic.onerror=()=>{ const s=el('div',null,'ph',P.n[0]); pic.replaceWith(s); }; }
+    else { pic=el('div',null,'ph','B'); try{ const pc=G.getPortrait('ben'); if(pc){ const c=el('canvas'); c.width=c.height=108; c.getContext('2d').drawImage(pc,0,0,108,108); c.style.cssText='flex:0 0 54px;width:54px;height:54px;border-radius:50%;border:2px solid '+P.c; pic=c; } }catch(e){} }
+    dlg.innerHTML=''; dlg.appendChild(pic); const t=el('div',null,null,'<div class="who">'+P.n+'<em>'+P.role+'</em></div><div></div>'); dTxt=t.lastChild; dlg.appendChild(t); dlg.appendChild(el('div',null,'tap','NEXT \u25B8')); dlg.style.display='flex';
+    dlg.style.animation='none'; void dlg.offsetWidth; dlg.style.animation='';
   }
   function dNext(){ if(dCur&&dCur.cb){ const f=dCur.cb; dCur=null; try{ f(); }catch(e){ console.warn(e); } } dCur=null; if(DQ.length) dShow(DQ.shift()); else dlg.style.display='none'; }
-  dlg.addEventListener('click',()=>dNext());
+  // tap: first tap finishes the typing, second tap goes to the next line
+  dlg.addEventListener('click',()=>{ if(dCur&&dTxt&&dTy<dFull.length){ dTy=dFull.length; dTxt.textContent=dFull; dT=Math.max(dT,2.2); } else dNext(); });
   const talking=()=>!!dCur||DQ.length>0;
 
   /* ---------- world helpers ---------- */
@@ -150,7 +170,7 @@ window.MissionSystem=function(G){
     const core=new THREE.Mesh(new THREE.SphereGeometry(.26,10,8),new THREE.MeshBasicMaterial({color:0x66ccff})); core.position.set(.2,.75,.1); g.add(core);
     if(MA.blade){ const m=THREE.SkeletonUtils.clone(MA.blade); MA.mats(m,null,true); m.scale.setScalar(.07); m.rotation.set(.5,.3,1.1); m.position.set(-.4,.7,0); g.add(m); }
     scene.add(g); wreck={g,core,t:0,x:g.position.x,z:g.position.z,y}; addProp(g);
-    IA.push({id:'wreck',x:wreck.x,y,z:wreck.z,r:4.2,label:'INSPECT WRECKAGE',enabled:()=>S.m01.status==='active'&&!S.m01.paused&&S.m01.obj===1,use:useWreck});
+    IA.push({id:'wreck',x:wreck.x,y,z:wreck.z,r:4.2,label:'\u{1F50D} SEARCH THE WRECK',enabled:()=>S.m01.status==='active'&&!S.m01.paused&&S.m01.obj===1,use:useWreck});
   }
   function buildCompound(){
     if(comp) return; const cx=SITE_S.x, cz=SITE_S.z, y=gy(cx,cz), g=new THREE.Group(); g.position.set(cx,y,cz);
@@ -178,9 +198,9 @@ window.MissionSystem=function(G){
       desk:solid(cx-1.6,cx+1.6,cz-D/2+1.65,cz-D/2+2.75,y,1.1), c1:solid(cx-6,cx-4.4,cz-4.4,cz-2.8,y,1.3), c2:solid(cx+4.4,cx+5.8,cz-4.6,cz-3.2,y,1.3), tower:solid(cx-W/2-4.3,cx-W/2-2.1,cz-4.1,cz-1.9,y,22) };
     comp={g,door,cols,paint,tex,beacon,y,t:0,open:false};
     addProp(g);
-    IA.push({id:'door',x:cx,y,z:cz+D/2+1.2,r:4.6,label:'OPEN DOOR',enabled:()=>S.m01.status==='active'&&!S.m01.paused&&S.m01.obj===2&&!comp.open,use:useDoor});
+    IA.push({id:'door',x:cx,y,z:cz+D/2+1.2,r:4.6,label:'\u{1F6AA} FORCE THE DOOR',enabled:()=>S.m01.status==='active'&&!S.m01.paused&&S.m01.obj===2&&!comp.open,use:useDoor});
     term={x:cx,y,z:cz-D/2+3.6};
-    IA.push({id:'term',x:term.x,y,z:term.z,r:4.2,label:'ACCESS TERMINAL',enabled:()=>S.m01.status==='active'&&!S.m01.paused&&S.m01.obj===4,use:useTerminal});
+    IA.push({id:'term',x:term.x,y,z:term.z,r:4.2,label:'\u{1F4BB} HACK THE TERMINAL',enabled:()=>S.m01.status==='active'&&!S.m01.paused&&S.m01.obj===4,use:useTerminal});
   }
   function openDoor(instant){ if(!comp||comp.open) return; comp.open=true; unsolid(comp.cols.door); if(instant){ comp.door.userData.open=1; comp.door.position.y=1.5+3.1; } else { comp.openT=0; try{ Audio_.explosion&&Audio_.explosion(); }catch(e){} } }
   function holoShow(){
@@ -237,10 +257,14 @@ window.MissionSystem=function(G){
   window.__MIS.marker=()=>marker&&!m().paused?{x:marker.x,z:marker.z,label:marker.label}:null;
 
   /* ---------- chill prompt ---------- */
-  function askChill(title){
-    chill.innerHTML='<h4>'+title+'</h4><button type="button" id="mc-go">CONTINUE MISSION</button><button type="button" class="s" id="mc-chill">CHILL SMALL</button>'; chill.style.display='block';
-    chill.querySelector('#mc-go').onclick=()=>{ chill.style.display='none'; };
-    chill.querySelector('#mc-chill').onclick=()=>{ chill.style.display='none'; m().paused=true; save(); refreshHud(); };
+  let pendingChill=null;
+  const CHILL_LINES={ 'DRONES DESTROYED':['Drones down!','Nice shooting, Ben. Keep the momentum, or take a breather. Your progress is saved either way.'], 'GUARDS DEFEATED':['Bunker cleared!','That is the whole welcome party. Ready to see what is on that terminal?'], 'SOURCE INVESTIGATED':['Mystery cracked!','You found who is behind it. Head home to report, or come back to this later.'] };
+  function askChill(title){ pendingChill=title; }
+  function showChill(title){
+    const L=CHILL_LINES[title]||[title,'Your progress is saved.'];
+    chill.innerHTML='<div class="big">'+L[0]+'</div><div class="sub">'+L[1]+'</div><button type="button" id="mc-go">LET\'S KEEP GOING \u25B6</button><button type="button" class="s" id="mc-chill">CHILL FOR A BIT \u263E</button>'; chill.style.display='block';
+    chill.querySelector('#mc-go').onclick=()=>{ chill.style.display='none'; const o=objective(); if(o){ toast('NEW OBJECTIVE: '+o.t.toUpperCase()); const h={1:'Walk up to the wreckage and tap the button that pops up.',3:'Clear out the guards inside the bunker.',4:'Walk up to the terminal and tap the button that pops up.',5:'Head back to the Rust Bucket. Follow the yellow marker.'}[m().obj]; if(h&&!talking()) say([['GWEN',h]]); } };
+    chill.querySelector('#mc-chill').onclick=()=>{ chill.style.display='none'; m().paused=true; save(); refreshHud(); toast('TAKING IT EASY. TAP THE BANNER TO RESUME'); };
   }
   function advance(to,chillTitle){ const s=m(); s.obj=to; save(); refreshHud(); if(chillTitle) askChill(chillTitle); }
 
@@ -265,7 +289,7 @@ window.MissionSystem=function(G){
   }
   function complete(){
     const s=m(); s.status='done'; s.obj=100; s.paused=false; save(); refreshHud(); marker=null; way.style.display='none';
-    done.innerHTML='<h3>MISSION 01</h3><h2>MISSION COMPLETE</h2><ul><li>Drone attack stopped</li><li>Evidence recovered</li><li>Source investigated</li><li>Psyphon identified</li></ul><button type="button">CONTINUE</button>';
+    done.innerHTML='<h3>MISSION 01 \u2022 UNWANTED VISITORS</h3><h2>NICE ONE, BEN!</h2><ul><li>Drone attack stopped</li><li>Evidence recovered</li><li>Source investigated</li><li>Psyphon unmasked</li></ul><button type="button">BACK TO THE ADVENTURE \u25B6</button>';
     done.style.display='flex'; done.querySelector('button').onclick=()=>{ done.style.display='none'; };
     try{ Audio_.menu&&Audio_.menu(false); }catch(e){}
   }
@@ -303,7 +327,9 @@ window.MissionSystem=function(G){
   function step(dt){
     if(!G.playing()){ tr.style.visibility='hidden'; way.style.display='none'; btn.style.display='none'; sb.style.display='none'; return; }
     tr.style.visibility='visible'; const s=m(); clock+=dt;
-    if(dCur){ dT-=dt; if(dT<=0) dNext(); }
+    if(dCur){ if(dTxt&&dTy<dFull.length){ dTy=Math.min(dFull.length,dTy+dt*46); dTxt.textContent=dFull.slice(0,Math.floor(dTy)); } else if(chill.style.display!=='block'){ dT-=dt; if(dT<=0) dNext(); } }
+    if(!dCur&&DQ.length) dShow(DQ.shift());
+    if(pendingChill&&!talking()){ const c=pendingChill; pendingChill=null; showChill(c); }
     // lightweight animation of props + mixers
     for(const en of enemies){ if(en.mixer&&en.alive) en.mixer.update(dt); }
     if(wreck){ wreck.t+=dt; wreck.core.material.color.setHex((Math.sin(wreck.t*9)>0)?0x66ccff:0x224466); if(Math.random()<dt*3) VFX.sparks(new THREE.Vector3(wreck.x,wreck.y+.9,wreck.z),3,3,0x99ddff,.2,.35); if(Math.random()<dt*2) VFX.particle('smoke_01',new THREE.Vector3(wreck.x,wreck.y+1,wreck.z),{size:.5,sizeEnd:1.6,life:1.6,tint:0x333333,alpha:.55,vel:new THREE.Vector3((Math.random()-.5)*.3,1.1,(Math.random()-.5)*.3)}); }
@@ -325,7 +351,7 @@ window.MissionSystem=function(G){
       const d=Math.hypot(player.pos.x-SPOT.x,player.pos.z-SPOT.z);
       if(d<14){ chargeT=Math.min(2,chargeT+dt); } else chargeT=Math.max(0,chargeT-dt*2);
       const near=d<14, ready=chargeT>=2;
-      if(near){ sb.style.display='block'; sb.disabled=!ready; sb.className=ready?'ready':''; sb.style.setProperty('--p',(chargeT/2*100).toFixed(0)+'%'); const t=ready?'START MISSION':'CHARGING...'; if(sb.textContent!==t) sb.textContent=t; } else sb.style.display='none';
+      if(near){ sb.style.display='block'; sb.disabled=!ready; sb.className=ready?'ready':''; sb.style.setProperty('--p',(chargeT/2*100).toFixed(0)+'%'); const t=ready?'\u25B6 TAP TO START!':'SCANNING SIGNAL '+Math.floor(chargeT/2*100)+'%'; if(sb.textContent!==t) sb.textContent=t; } else sb.style.display='none';
       if(beacon){ beacon.userData.t+=dt; beacon.rotation.y+=dt*.8; beacon.children[1].scale.setScalar(1+.12*Math.sin(beacon.userData.t*3)); }
       placeWay(); btn.style.display='none'; return;
     }
@@ -344,7 +370,7 @@ window.MissionSystem=function(G){
     const a=s.paused?null:nearest(); if(a){ btn.style.display='block'; if(btn.textContent!==a.label) btn.textContent=a.label; } else btn.style.display='none';
   }
   // the RV interaction sits next to the Rust Bucket
-  IA.push({id:'max',get x(){ return G.rv().x; },get z(){ return G.rv().z; },get y(){ return gy(G.rv().x,G.rv().z); },r:7,label:'REPORT TO MAX',enabled:()=>m().status==='active'&&!m().paused&&m().obj===5,use:useMax});
+  IA.push({id:'max',get x(){ return G.rv().x; },get z(){ return G.rv().z; },get y(){ return gy(G.rv().x,G.rv().z); },r:7,label:'\u{1F4AC} TALK TO GRANDPA',enabled:()=>m().status==='active'&&!m().paused&&m().obj===5,use:useMax});
   window.__MIS.update=step;
   window.__MIS.sites={SITE_A,SITE_S,DOOR};
   window.__MIS.dbg={ offerNow(){ offerAt=-1; }, get charge(){ return chargeT; }, get comp(){ return comp; }, get wreck(){ return wreck; }, get term(){ return term; }, say, spawnGroup, GA, GB, S:()=>S };

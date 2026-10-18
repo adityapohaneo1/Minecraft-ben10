@@ -115,7 +115,15 @@ window.Mission2=function(A){
   const rb=()=>G.rbVeh();
   const vel=p=>({x:-Math.sin(p.yaw)*p.v+p.push.x, z:-Math.cos(p.yaw)*p.v+p.push.z});
   function homePose(){ const r=G.rv(); return {x:r.x,z:r.z,yaw:r.yaw||0}; }
+  const landOK=(x,z)=>{ const C=window.__CITY, b=C&&C.bounds; if(b&&(x<b[0]+10||x>b[2]-10||z<b[1]+10||z>b[3]-10)) return false; return G.terrH(x,z)>-.45; };   // stay inside the city grid, never in the water
+  function landFix(ps){
+    if(landOK(ps.x,ps.z)&&!G.blockedAt(ps.x,ps.z,gy(ps.x,ps.z)+.5)) return ps;
+    for(let r=6;r<=200;r+=6) for(let k=0;k<20;k++){ const a=k/20*TAU, x=ps.x+Math.cos(a)*r, z=ps.z+Math.sin(a)*r;
+      if(landOK(x,z)&&landOK(x+Math.cos(a)*7,z+Math.sin(a)*7)&&!G.blockedAt(x,z,gy(x,z)+.5)&&!G.carBlocked({yaw:ps.yaw,by:gy(x,z)},x,z)) return {x:+x.toFixed(2),z:+z.toFixed(2),yaw:ps.yaw}; }
+    return ps;
+  }
   function placeRB(ps,opts){
+    ps=landFix(ps); if(S.rb&&(ps.x!==S.rb.x||ps.z!==S.rb.z)&&Math.hypot(ps.x-S.rb.x,ps.z-S.rb.z)<220&&(S.status==='done'||S.obj>=3)) S.rb=ps;
     const p=G.spawnRB(ps.x,ps.z,ps.yaw); if(!p) return null; opts=opts||{};
     p.mInv=!!opts.inv; p.locked=!!opts.lock; p.driver=null; return p;
   }
@@ -154,17 +162,17 @@ window.Mission2=function(A){
   const D=[]; let idc=0, totalSpawned=0, chaseT=0, bolts=[];
   const cap=()=>Math.min((navigator.maxTouchPoints>0?8:11),5+Math.floor(chaseT/10));
   function flyY(x,z,alt){ return gy(x,z)+alt; }
-  function mk(type,x,z,alt){
+  function mk(type,x,z,alt){ type='blade_drone';
     const en=G.spawnEnemy(type,x,z); if(!en) return null;
-    en.mission=true; en.m2=true; en.mid='m2_'+(++idc); en.alertedT=1e6; en.hover=type==='blade_drone'?.75:1.3; en.ph=Math.random()*6;
+    en.mission=true; en.m2=true; en.stat='sky_drone'; en.mid='m2_'+(++idc); en.alertedT=1e6; en.hover=.75; en.ph=Math.random()*6;
     en.mesh.position.y=flyY(x,z,alt); return en;
   }
-  function spawnFar(n){ const r=rbSpot(); for(let i=0;i<n;i++){ const a=rnd(0,TAU), d=rnd(70,95), en=mk(Math.random()<.55?'blade_drone':'laser_drone',r.x+Math.cos(a)*d,r.z+Math.sin(a)*d,rnd(12,22)); if(en){ en.chase=true; en.farIdle=true; D.push(mkRec(en)); } } }
-  function mkRec(en){ return {en,side:rnd(-9,9),back:rnd(7,20),up:rnd(5.5,12),cd:rnd(2.5,5.5),charge:0,climb:0,ph:Math.random()*6,type:en.type}; }
+  function spawnFar(n){ const r=rbSpot(); for(let i=0;i<n;i++){ const a=rnd(0,TAU), d=rnd(70,95), en=mk('blade_drone',r.x+Math.cos(a)*d,r.z+Math.sin(a)*d,rnd(12,22)); if(en){ en.chase=true; en.farIdle=true; D.push(mkRec(en)); } } }
+  function mkRec(en){ return {en,side:rnd(-9,9),back:rnd(7,20),up:rnd(5.5,12),cd:rnd(2.5,5.5),charge:0,climb:0,ph:Math.random()*6,type:en.type,burst:Math.random()<.35?2:1}; }
   function spawnChaseDrone(){
     const p=rb(); if(!p) return; const f=-Math.sin(p.yaw), fz=-Math.cos(p.yaw), a=rnd(-1.2,1.2), d=rnd(38,58);
     const bx=-f, bz=-fz, c=Math.cos(a), s=Math.sin(a), dx=bx*c-bz*s, dz=bx*s+bz*c;
-    const en=mk(Math.random()<.55?'blade_drone':'laser_drone',p.mesh.position.x+dx*d,p.mesh.position.z+dz*d,rnd(9,16)); if(!en) return; en.chase=true; D.push(mkRec(en)); totalSpawned++;
+    const en=mk('blade_drone',p.mesh.position.x+dx*d,p.mesh.position.z+dz*d,rnd(9,16)); if(!en) return; en.chase=true; D.push(mkRec(en)); totalSpawned++;
   }
   function dropDrone(r,remove){ const i=D.indexOf(r); if(i>=0) D.splice(i,1); if(remove){ const k=enemies.indexOf(r.en); if(k>=0){ enemies.splice(k,1); } try{ scene.remove(r.en.mesh); }catch(e){} r.en.alive=false; } }
   const flash=(en,on)=>{ try{ for(const m of en.parts.all){ if(on){ m.emissive.setHex(0xff6a1a); } else m.emissive.setHex(m.userData&&m.userData.baseEmis||0); } }catch(e){} };
@@ -173,7 +181,7 @@ window.Mission2=function(A){
   const orbGeo=new THREE.SphereGeometry(.4,8,6), haloGeo=new THREE.SphereGeometry(.78,8,6);
   function orb(color){ const g=new THREE.Group(); g.add(new THREE.Mesh(orbGeo,new THREE.MeshBasicMaterial({color:0xffffff}))); g.add(new THREE.Mesh(haloGeo,new THREE.MeshBasicMaterial({color,transparent:true,opacity:.5,depthWrite:false,blending:THREE.AdditiveBlending}))); g.visible=false; scene.add(g); return g; }
   function fire(r,p){
-    const e=r.en.mesh.position, laser=r.type==='laser_drone', n=laser?3:1, col=laser?0x44ffd0:0xff8a2a, sp=laser?27:24;
+    const e=r.en.mesh.position, laser=r.burst>1, n=r.burst, col=laser?0x44ffd0:0xff8a2a, sp=laser?27:24;
     const vp=vel(p), dist=Math.hypot(p.mesh.position.x-e.x,p.mesh.position.z-e.z);
     for(let k=0;k<n;k++){
       if(bolts.filter(b=>b.on).length>=26) return; let b=bolts.find(q=>!q.on&&q.col===col); if(!b){ b={g:orb(col),col,on:false,v:new THREE.Vector3()}; bolts.push(b); }
@@ -214,7 +222,7 @@ window.Mission2=function(A){
       let tx,tz,ty,sp;
       if(r.farIdle&&S.obj===0){ tx=pm.x+Math.cos(r.ph*.3+i)*60; tz=pm.z+Math.sin(r.ph*.3+i)*60; ty=pm.y+14; sp=7; }                 // circling in the distance before the chase
       else { r.farIdle=false;
-        tx=pm.x-fx*r.back+rx*(r.side+Math.sin(r.ph*.9)*2.5)+vp.x*.35; tz=pm.z-fz*r.back+rz*(r.side+Math.sin(r.ph*.9)*2.5)+vp.z*.35; ty=gy(tx,tz)+r.up+r.climb+Math.sin(r.ph*1.3)*.8; sp=clamp(Math.hypot(tx-m.x,tz-m.z)*2.4,0,r.type==='blade_drone'?30:27); }
+        tx=pm.x-fx*r.back+rx*(r.side+Math.sin(r.ph*.9)*2.5)+vp.x*.35; tz=pm.z-fz*r.back+rz*(r.side+Math.sin(r.ph*.9)*2.5)+vp.z*.35; ty=gy(tx,tz)+r.up+r.climb+Math.sin(r.ph*1.3)*.8; sp=clamp(Math.hypot(tx-m.x,tz-m.z)*2.4,0,30); }
       const dx=tx-m.x, dz=tz-m.z, dl=Math.hypot(dx,dz)||1, step=Math.min(dl,sp*dt); let nx=m.x+dx/dl*step, nz=m.z+dz/dl*step;
       const blocked=G.blockedAt(nx,nz,m.y-1);
       if(blocked){ r.climb=Math.min(60,r.climb+18*dt); if(!G.blockedAt(nx,m.z,m.y-1)) m.x=nx; else if(!G.blockedAt(m.x,nz,m.y-1)) m.z=nz; }
@@ -224,7 +232,7 @@ window.Mission2=function(A){
       // attacks
       if(chaseOn&&!r.farIdle&&S.obj===1&&!S.trig&&G.driving()===p){
         const ramp=1-Math.min(.32,chaseT/220);
-        if(r.charge>0){ r.charge-=dt; if(r.charge<=0){ flash(en,false); fire(r,p); r.cd=rnd(...(r.type==='laser_drone'?[3.2,4.8]:[3.6,5.2]))*ramp; } }
+        if(r.charge>0){ r.charge-=dt; if(r.charge<=0){ flash(en,false); fire(r,p); r.cd=rnd(3.2,5.2)*ramp; } }
         else { r.cd-=dt; if(r.cd<=0&&far<46&&far>7){ r.charge=.45; flash(en,true); } }
       }
     }
@@ -279,26 +287,26 @@ window.Mission2=function(A){
     const p=rb(); if(!p) return; p.mInv=true; p.locked=true; p.driver='script'; if(!fromRestore){ /* keep current speed */ } else p.v=13;
     dep={dist:0,t:0,stuck:0}; exitB.style.display='none';
     // surviving chase drones turn on Ben; the waves top them up
-    waveEns.length=0; for(const r of D.slice()){ if(r.en.alive&&enemies.indexOf(r.en)>=0){ r.en.chase=false; r.en.hover=r.type==='blade_drone'?.75:1.3; r.en.alertedT=1e6; waveEns.push(r.en); } D.length=0; }
+    waveEns.length=0; for(const r of D.slice()){ if(r.en.alive&&enemies.indexOf(r.en)>=0){ r.en.chase=false; r.en.hover=.75; r.en.stat='sky_drone'; r.en.alertedT=1e6; waveEns.push(r.en); } D.length=0; }
     S.obj=3; wave=0; waveT=1.5; A.save(); A.refreshHud(); chatClear(); muted=false;
     say([['GWEN','The Rust Bucket is pulling out! Ben, you have got their attention now!'],['BEN','That is what I was afraid of. Time to go hero!']]);
   }
   function driveAway(dt){
     const p=rb(); if(!p||!dep) return; const m=p.mesh.position; dep.t+=dt;
-    const fr=(a,d)=>!G.carBlocked(p,m.x-Math.sin(p.yaw+a)*d,m.z-Math.cos(p.yaw+a)*d);
+    const fr=(a,d)=>{ const x=m.x-Math.sin(p.yaw+a)*d, z=m.z-Math.cos(p.yaw+a)*d; return landOK(x,z)&&!G.carBlocked(p,x,z); };
     let steer=0; const opts=[0,.3,-.3,.6,-.6,.95,-.95,1.35,-1.35];
     for(const a of opts){ if(fr(a,6)&&fr(a,13)){ steer=a; break; } }
     p.yaw+=clamp(steer,-1,1)*dt*1.5; p.mesh.rotation.y=p.yaw;
     p.v+=(15-p.v)*Math.min(1,dt*1.3); const x0=m.x, z0=m.z; G.moveCar(p,dt); dep.dist+=Math.hypot(m.x-x0,m.z-z0);
     if(Math.abs(p.v)<1.2) dep.stuck+=dt; else dep.stuck=0; if(dep.stuck>2.4){ p.yaw+=1.7; dep.stuck=0; p.v=3; }
     const pd=Math.hypot(m.x-player.pos.x,m.z-player.pos.z);
-    if(dep.dist>240||dep.t>40||(dep.dist>160&&pd>190)){ p.v=0; p.driver=null; S.rb=pose(p); dep=null; A.save(); }
+    if(dep.dist>240||dep.t>40||(dep.dist>160&&pd>190)){ p.v=0; p.driver=null; if(!landOK(m.x,m.z)){ const f=landFix({x:m.x,z:m.z,yaw:p.yaw}); m.x=f.x; m.z=f.z; } S.rb=pose(p); dep=null; A.save(); }
   }
 
   /* ---------- drone waves ---------- */
   const WN=[6,8,10]; let wave=0, waveT=0, waveEns=[], leashT=0, objTextN=-1;
   function spawnWaveDrone(){
-    const a=rnd(0,TAU), d=rnd(28,42), x=player.pos.x+Math.cos(a)*d, z=player.pos.z+Math.sin(a)*d, en=mk(Math.random()<.5?'blade_drone':'laser_drone',x,z,rnd(7,13)); if(en){ waveEns.push(en); } return en;
+    const a=rnd(0,TAU), d=rnd(28,42), x=player.pos.x+Math.cos(a)*d, z=player.pos.z+Math.sin(a)*d, en=mk('blade_drone',x,z,rnd(7,13)); if(en){ waveEns.push(en); } return en;
   }
   function wavesStep(dt){
     if(waveT>0){ waveT-=dt; if(waveT<=0){ wave++; const n=WN[wave-1]; toast('WAVE '+wave+' OF '+WN.length); while(waveEns.filter(e=>e.alive).length<n) spawnWaveDrone(); A.refreshHud(); } return; }

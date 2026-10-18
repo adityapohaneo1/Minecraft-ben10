@@ -333,8 +333,8 @@
   #hud #btn-jump{--ch:0deg;}
   #hud #btn-jump.charging::after{content:'';position:absolute;inset:-7px;border-radius:50%;background:conic-gradient(var(--theme) var(--ch),rgba(255,255,255,.14) 0);-webkit-mask:radial-gradient(circle,transparent 60%,#000 62%);mask:radial-gradient(circle,transparent 60%,#000 62%);}
   #hud #btn-jump.full{box-shadow:0 0 22px var(--theme);animation:omniwarn .3s infinite alternate;}
-  #hud #veh-btn{left:50%;transform:translateX(-50%);bottom:max(14px,env(safe-area-inset-bottom,14px));}
-  #hud #veh-btn.active{transform:translateX(-50%) scale(.92);}
+  #hud #veh-btn{left:max(112px,calc(env(safe-area-inset-left,0px) + 100px));transform:none;bottom:calc(max(14px,env(safe-area-inset-bottom,14px)) + 196px);}   /* side of the screen: the story dialogue sits bottom-centre */
+  #hud #veh-btn.active{transform:scale(.92);}
   body.driving #btn-run{display:none !important;}
   #hud #status-text{bottom:118px;}
 
@@ -2060,6 +2060,8 @@ function animateRig(parts,dt,inp){
   // ---- death: crumple; the whole-body fall is applied to the model root by the caller ----
   if(dead>0){ const d=_sm(dead); P.sL.x=_lerp(P.sL.x,-.5,d); P.sR.x=_lerp(P.sR.x,.2,d); P.sL.z=_lerp(P.sL.z,-.6,d); P.sR.z=_lerp(P.sR.z,.8,d); P.eL=_lerp(P.eL,.5,d); P.eR=_lerp(P.eR,.9,d);
     P.tLx=_lerp(P.tLx,.4,d); P.tRx=_lerp(P.tRx,-.2,d); P.kL=_lerp(P.kL,.9,d); P.kR=_lerp(P.kR,.3,d); P.hdX=_lerp(P.hdX,.35,d); P.hdY=_lerp(P.hdY,.4,d); P.chX=_lerp(P.chX,.15,d); }
+  // ---- Four Arms: only the upper pair is posed; the lower pair copies the upper pair on the same side, a hair behind ----
+  if(parts.leftArm2){ for(const k of ['x','y','z']){ P.s2L[k]=P.sL[k]; P.s2R[k]=P.sR[k]; } P.e2L=P.eL; P.e2R=P.eR; }
   // ---- apply with per-joint smoothing (attacks & hits use a stiff rate so they stay snappy) ----
   const fast=(inp.atk||hurt>0||dead>0)?38:(inp.flying||inp.swimming?12:(grounded?26:14)), rt=fast;
   const ap=(o,k,v)=>{ o.rotation[k]=_damp(o.rotation[k],v,rt,dt); };
@@ -2067,9 +2069,11 @@ function animateRig(parts,dt,inp){
   ap(parts.hips,'x',P.hipsRX); ap(parts.hips,'y',P.hipsRY); ap(parts.hips,'z',P.hipsRZ);
   ap(parts.chest,'x',P.chX); ap(parts.chest,'y',P.chY); ap(parts.chest,'z',P.chZ);
   ap(parts.head,'x',P.hdX); ap(parts.head,'y',P.hdY); ap(parts.head,'z',P.hdZ);
-  const J=[[parts.leftArm,P.sL],[parts.rightArm,P.sR],[parts.leftArm2,P.s2L],[parts.rightArm2,P.s2R]];
+  const J=[[parts.leftArm,P.sL],[parts.rightArm,P.sR]];
   for(const [o,S] of J){ if(!o) continue; ap(o,'x',S.x); ap(o,'y',S.y); ap(o,'z',S.z); }
-  ap(parts.elbowL,'x',P.eL); ap(parts.elbowR,'x',P.eR); if(parts.elbow2L){ ap(parts.elbow2L,'x',P.e2L); ap(parts.elbow2R,'x',P.e2R); }
+  ap(parts.elbowL,'x',P.eL); ap(parts.elbowR,'x',P.eR);
+  if(parts.leftArm2){ const lag=(o,k,v)=>{ o.rotation[k]=_damp(o.rotation[k],v,rt*.5,dt); };      // the delay
+    for(const [o,S] of [[parts.leftArm2,P.s2L],[parts.rightArm2,P.s2R]]){ lag(o,'x',S.x); lag(o,'y',S.y); lag(o,'z',S.z); } lag(parts.elbow2L,'x',P.e2L); lag(parts.elbow2R,'x',P.e2R); }
   ap(parts.leftLeg,'x',P.tLx); ap(parts.rightLeg,'x',P.tRx); ap(parts.leftLeg,'z',P.tLz); ap(parts.rightLeg,'z',P.tRz);
   ap(parts.kneeL,'x',-P.kL); ap(parts.kneeR,'x',-P.kR); ap(parts.footL,'x',P.fL); ap(parts.footR,'x',P.fR);
   if(parts.glb) GLBBODY.apply(parts,dt);   // retarget the pivots onto the GLB skeleton
@@ -2887,6 +2891,7 @@ const ENEMY_STATS = {
   speed:   { hp:30,  speed:9.0, damage:6,  color:0xd8a020, size:[0.65,0.95,0.65], yOff:0.48, retreatHpFrac:0.2,  ranged:false, chaseRange:16, loseRange:22 },
   laser_drone:{ hp:38, speed:2.8, damage:7, color:0x55606e, size:[0.8,1.1,0.8], yOff:0.8, retreatHpFrac:0, ranged:true, chaseRange:26, loseRange:40, preferredDist:9, projSpeed:26 },
   blade_drone:{ hp:26, speed:8.5, damage:7, color:0x555a66, size:[0.7,0.5,0.7], yOff:0.5, hover:.75, retreatHpFrac:0, ranged:false, chaseRange:30, loseRange:48 },
+  sky_drone:{ hp:26, speed:7.5, damage:6, color:0x555a66, size:[0.7,0.5,0.7], yOff:0.5, hover:.75, retreatHpFrac:0, ranged:true, chaseRange:60, loseRange:90, preferredDist:13, projSpeed:21 },
   elite:   { hp:110, speed:2.4, damage:11, color:0x1a1a2e, size:[0.95,1.35,0.95], yOff:0.68, retreatHpFrac:0.15, ranged:true,  chaseRange:16, loseRange:20, preferredDist:6, projSpeed:20 },
 };
 Object.values(ENEMY_STATS).forEach(st=>{ st.yOff*=CHAR_SCALE; if(st.size) st.size=st.size.map(v=>v*CHAR_SCALE); });
@@ -3075,7 +3080,7 @@ function updateEnemies(dt){
       if(!blockedAt(p.x, nz, p.y-0.5)) p.z = nz;
       en.knockVel.multiplyScalar(Math.max(0, 1 - dt*6)); // decays to ~0 over a few hundred ms
     }
-    const stats = ENEMY_STATS[en.type] || ENEMY_STATS.normal;
+    const stats = ENEMY_STATS[en.stat||en.type] || ENEMY_STATS.normal;
     en.staggerT = Math.max(0, (en.staggerT||0) - dt);
     if(en.staggerT > 0){ p.y = enemyGroundY(en,stats.yOff,dt); return; } // hit-reaction pause: skip normal AI this frame
 
@@ -5283,6 +5288,19 @@ function updatePlayer(dt){
   if(player.driving && player.alive){ driveTick(dt); return; }
   if(player.driving) exitCar(true);
   updatePlayerOnFoot(dt);
+  bodyCollide();
+}
+// Solid bodies: Ben cannot walk into civilians, gang members, enemies or mission drones, so a swing never starts from inside the target.
+function bodyCollide(){
+  if(!player.alive||player.driving||player._ball||player.rolling||player.dashT>0) return;
+  const rp=.38; let pf=player.pos.y-1.0;
+  for(const e of enemies){ if(!e.alive||e.state==='dead'||e.ice&&false) continue; const m=e.mesh.position, st=ENEMY_STATS[e.stat||e.type];
+    const yOff=(st&&st.yOff)||1.0, ef=m.y-yOff, h=(st&&st.size?st.size[1]:1.8)+.3, re=st&&st.size?Math.max(st.size[0],st.size[2])*.5+.12:.42;
+    if(pf>ef+h||pf+1.9<ef+.1) continue;
+    let dx=player.pos.x-m.x, dz=player.pos.z-m.z, d=Math.hypot(dx,dz); if(d>=rp+re) continue; if(d<.001){ dx=Math.random()-.5; dz=Math.random()-.5; d=Math.hypot(dx,dz); }
+    const nx=dx/d, nz=dz/d, over=rp+re-d, tx=player.pos.x+nx*over, tz=player.pos.z+nz*over;
+    if(!blockedAt(tx,player.pos.z,pf+.1)) player.pos.x=tx; else if(!e.npc||true){ const ex=m.x-nx*over; if(!blockedAt(ex,m.z,m.y-.5)) m.x=ex; }
+    if(!blockedAt(player.pos.x,tz,pf+.1)) player.pos.z=tz; else { const ez=m.z-nz*over; if(!blockedAt(m.x,ez,m.y-.5)) m.z=ez; } }
 }
 function playerAnimate(parts,dt,moving){
   const ry=player.model.rotation.y, id=player.form.id, fwd={x:-Math.sin(ry),z:-Math.cos(ry)};
@@ -5369,7 +5387,7 @@ function updatePlayerOnFoot(dt){
   let mx = moveInput.x, my = moveInput.y; if(SW.on&&SW.ph===1){ mx*=.15; my*=.15; }
   const mag = Math.hypot(mx,my); if(mag>1){ mx/=mag; my/=mag; }
   const speedMult = player.speedBurstT>0 ? (player.form.special.speedMult||1) : 1;
-  const speed = (TF.active?0:1) * player.form.speed * SPEED_SCALE * speedMult * (player.dashT>0 ? ((player.superSpeed||0)>.2 ? 1.3 : 1+3.6*Math.pow(player.dashT/.32,.7)) : 1) * (carried?0.75:1) * (player.swimming?0.6:1) * (1+(player.superSpeed||0)*12) * (1+(player.rollT||0)*3.2) * ((player.rollT||0)>.5&&(player.runLatch||keys['ShiftLeft']||keys['ShiftRight'])?1.5:1) * ((player.runLatch||keys['ShiftLeft']||keys['ShiftRight']) && !player.flying && !player.swimming && !carried && player.form.id!=='xlr8' ? 1.5 : 1) * (player.leapCharging ? 0.35 : 1);
+  const speed = (TF.active?0:1) * player.form.speed * SPEED_SCALE * speedMult * (player.dashT>0 ? ((player.superSpeed||0)>.2 ? 1.3 : 1+3.6*Math.pow(player.dashT/.32,.7)) : 1) * (carried?0.75:1) * (player.swimming?0.6:1) * (1+(player.superSpeed||0)*12) * (1+(player.rollT||0)*3.2) * ((player.rollT||0)>.5&&(player.runLatch||keys['ShiftLeft']||keys['ShiftRight'])?1.5:1) * ((player.runLatch||keys['ShiftLeft']||keys['ShiftRight']) && !player.flying && !player.swimming && !carried && player.form.id!=='xlr8' ? 1.5 : 1) ;
   let moveX = forward.x*my + right.x*mx;
   let moveZ = forward.z*my + right.z*mx;
   if(player.dashT>0){ moveX=player.dashDir.x; moveZ=player.dashDir.z; player.dashT-=dt; }
@@ -5776,7 +5794,7 @@ bindBtn('cam-btn', ()=>{ if(!PAUSED) setCamFree(!camMode.free); });
 
 let PAUSED=false, gameOn=false, pauseHist=false, ignorePop=0, hudEdit=null;
 // Missions (www/missions.js): the engine gets exactly the pieces of the game it needs
-try{ if(window.MissionSystem) window.MissionSystem({THREE,scene,camera,player,enemies,VFX,Audio_,colliders,groundTopAt:(x,z,fy)=>groundTopAt(x,z,fy),spawnEnemy:(t,x,z)=>makeEnemy(t,x,z),getPortrait:k=>getPortraitCanvas(k),rv:()=>ENVP.RV_POS,playing:()=>gameOn&&!PAUSED&&player.alive,snapshot:()=>worldSnapshot(),SaveGame:window.SaveGame,props,blockedAt:(x,z,y)=>blockedAt(x,z,y,true),carBlocked:(p,x,z)=>carProbeBlocked(p,x,z),moveCar,damageVehicle,enterCar,exitCar,vehicleHit,spawnRB,rbVeh:()=>ENVP.rvVeh||null,revive:revivePlayer,applySnap,shake:v=>shakeCamera(v),flash:()=>flashDamage(),banner:t=>bannerText(t),driving:()=>player.driving,enemyGroundY,airY:(x,z)=>groundTopAt(x,z)}); }catch(e){ console.warn('missions',e); }
+try{ if(window.MissionSystem) window.MissionSystem({THREE,scene,camera,player,enemies,VFX,Audio_,colliders,groundTopAt:(x,z,fy)=>groundTopAt(x,z,fy),spawnEnemy:(t,x,z)=>makeEnemy(t,x,z),getPortrait:k=>getPortraitCanvas(k),rv:()=>ENVP.RV_POS,playing:()=>gameOn&&!PAUSED&&player.alive,snapshot:()=>worldSnapshot(),SaveGame:window.SaveGame,props,blockedAt:(x,z,y)=>blockedAt(x,z,y,true),carBlocked:(p,x,z)=>carProbeBlocked(p,x,z),moveCar,damageVehicle,enterCar,exitCar,vehicleHit,spawnRB,rbVeh:()=>ENVP.rvVeh||null,revive:revivePlayer,applySnap,shake:v=>shakeCamera(v),flash:()=>flashDamage(),banner:t=>bannerText(t),driving:()=>player.driving,enemyGroundY,terrH:(x,z)=>TERR.h(x,z),airY:(x,z)=>groundTopAt(x,z)}); }catch(e){ console.warn('missions',e); }
 const pausePage=document.getElementById('pause-page');
 const ppShow=id=>{ ['pp-main','pp-opts'].forEach(k=>document.getElementById(k).style.display=(k===id?'flex':'none')); document.getElementById('pp-hudbar').style.display='none'; pausePage.classList.remove('editing'); };
 function releaseInputs(){ AIM.on=false; player.csBlastHeld=false; moveInput.x=0; moveInput.y=0; player.flameHeld=false; player.sprayHeld=false; player.atkHeld=false; player.superHeld=false; player.rollHeld=false; player.runLatch=false; joyId=null; resetJoy(); joyZone.classList.remove('run','held'); camTouchId=null; drv.l=drv.r=drv.g=false; document.querySelectorAll('.steer').forEach(x=>x.classList.remove('on')); for(const k in keys) keys[k]=false; try{ if(carried===null) {} }catch(e){} }

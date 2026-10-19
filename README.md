@@ -1,4 +1,4 @@
-# Omniverse: ZERO — Android build
+# .Omniverse: ZERO — Android build
 
 This wraps `www/index.html` (the game) as an Android app using Capacitor,
 and builds it automatically with GitHub Actions.

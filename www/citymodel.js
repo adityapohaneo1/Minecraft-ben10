@@ -53,7 +53,8 @@ function build(scene,GY,gridAdd){
   for(const b of D.paves){ const w=b[3]-b[0], d=b[5]-b[2], hh=Math.max(.05,b[4]-b[1]); const mat=new T.MeshLambertMaterial({map:pave.clone()}); mat.map.needsUpdate=true; mat.map.repeat.set(w/4,d/4); const m=new T.Mesh(new T.BoxGeometry(w,hh,d),mat); m.position.set((b[0]+b[3])/2,b[1]+hh/2,(b[2]+b[5])/2); m.receiveShadow=true; grp.add(m); }
   // trees (instanced): trunk + two canopy blobs
   { const n=D.trees.length, trunk=new T.InstancedMesh(new T.CylinderGeometry(.18,.28,1,6),new T.MeshLambertMaterial({color:0x6b4a2b}),n), crown=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),new T.MeshLambertMaterial({color:0xffffff}),n*2), o=new T.Object3D(), col=new T.Color();
-    D.trees.forEach((b,i)=>{ const x=(b[0]+b[3])/2, z=(b[2]+b[5])/2, ht=Math.max(3,b[4]-b[1]), s=ht/7, r=(Math.abs(Math.sin(i*12.9))); const tr=ht*.38;
+    window.__TREES2=[]; D.trees.forEach((b,i)=>{ const x=(b[0]+b[3])/2, z=(b[2]+b[5])/2, ht=Math.max(3,b[4]-b[1]), s=ht/7, r=(Math.abs(Math.sin(i*12.9))); const tr=ht*.38;
+      if(window.__CITY2&&i%2===1){ window.__TREES2.push([x,z,ht]); o.scale.set(0,0,0); o.position.set(x,0,z); o.updateMatrix(); trunk.setMatrixAt(i,o.matrix); crown.setMatrixAt(i*2,o.matrix); crown.setMatrixAt(i*2+1,o.matrix); return; }
       o.position.set(x,tr/2,z); o.scale.set(s*1.2,tr,s*1.2); o.rotation.set(0,0,0); o.updateMatrix(); trunk.setMatrixAt(i,o.matrix);
       for(let k=0;k<2;k++){ const cs=ht*(k?.26:.34); o.position.set(x,tr+cs*(k?1.3:.55),z); o.scale.set(cs,cs*.9,cs); o.updateMatrix(); crown.setMatrixAt(i*2+k,o.matrix); col.setHSL(.25+.05*r,.5,.28+.08*r+(k?.05:0)); crown.setColorAt(i*2+k,col); } });
     trunk.frustumCulled=crown.frustumCulled=false; grp.add(trunk,crown); }

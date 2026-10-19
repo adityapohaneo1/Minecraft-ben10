@@ -39,6 +39,7 @@
   .qbtn{padding:6px 14px;border:1px solid var(--green-dim);color:#9fe;background:#0a140f;font-size:12px;letter-spacing:1px;}
   .qbtn.active{background:var(--green-dim);color:#fff;}
   #start-screen.leaving{opacity:0;transition:opacity .3s ease;}
+.how{text-align:left;font-size:13px;line-height:1.45}.how h3{margin:12px 0 4px;color:#39ff8a;font-size:12px;letter-spacing:2px}.how b{color:#ffd65a}.hw{width:100%;border-collapse:collapse;margin-top:6px}.hw td{padding:3px 6px;border-bottom:1px solid rgba(255,255,255,.12);vertical-align:top}.hw td:first-child{color:#39ff8a;font-weight:700;white-space:nowrap}.hw td:nth-child(2){text-align:center;font-weight:700;color:#ffd65a}
 </style>
 </head>
 <body>
@@ -94,11 +95,7 @@ Audio_.preload(names,(d,n)=>{ LD.set(.08+.88*d/n); }).then(async()=>{
 /* ---- menu ---- */
 const panel=$('menu-panel');
 function showPanel(html){ panel.innerHTML=html; panel.classList.add('show'); }
-$('btn-controls').addEventListener('click',()=>{ Audio_.click(); showPanel(
-  isTouch
-  ? 'LEFT: joystick to move.<br>RIGHT SIDE: swipe to look around.<br>Swipe the alien portrait (top-left) to switch aliens, tap it to revert to Ben.<br>Big button = Attack (hold = place block). Arrow button = Jump. Bolt button = Special.<br>VEHICLES: walk up to a car and tap ENTER VEHICLE (left side)'
-  : 'WASD to move, mouse to look (click to lock).<br>Left click = Attack, Right click = Place block.<br>F = Attack, G = Place, Space = Jump, E/R/T/Y = alien actions, Q = Revert to Ben, V = enter/exit vehicle (Space = handbrake). L / Tab / middle-click = Lock-on. Fly/swim: look up or down while moving.'
-); });
+$('btn-controls').addEventListener('click',()=>{ Audio_.click(); showPanel('<div class="how"><h3>MOVE &amp; FIGHT</h3>'+(isTouch?"LEFT: joystick to move. RIGHT SIDE: swipe to look. Big button = Attack (hold = place block). Arrow = Jump. Bolt buttons = alien abilities. Fly/swim: look up or down while moving.":"WASD move, mouse look (click to lock). Left click / F attack, Space jump, E/R/T/Y alien abilities, Q back to Ben, V vehicle, P or Esc pause, L / Tab lock-on.")+'<h3>ALIENS</h3>Tap the Omnitrix portrait (top-left) to open the dial, swipe it to choose an alien. Each alien has its own bolt/ability buttons. Energy refills over time; the Omnitrix times out and you drop back to Ben.<h3>CARRYING PEOPLE</h3>Six aliens can rescue civilians. Walk up to one and tap <b>PICK UP</b> (left side), tap <b>SET DOWN</b> to put everyone down safely. Carried people cannot be hurt.<table class="hw"><tr><td>HEATBLAST</td><td>2</td><td>one in his arms, one over the shoulder</td></tr><tr><td>FOUR ARMS</td><td>4</td><td>one in every hand</td></tr><tr><td>DIAMONDHEAD</td><td>2</td><td>wrapped in crystal cradles</td></tr><tr><td>CHROMASTONE</td><td>1</td><td>floating in a prism bubble</td></tr><tr><td>XLR8</td><td>1</td><td>piggyback, hold on tight</td></tr><tr><td>WILDVINE</td><td>5</td><td>carried by his living vines</td></tr></table><h3>VEHICLES</h3>Walk up to a car and tap <b>ENTER VEHICLE</b> (left side). The Rust Bucket is yours for missions. Drive across the Harbour Bridge to reach Titan Bay.<h3>MISSIONS &amp; SAVING</h3>Follow the map markers; a START button appears as you approach. The game saves your place, alien and mission automatically. If a mission fails you can restart it, resume from the last savepoint, or exit.</div>'); panel.scrollTop=0; });
 $('btn-about').addEventListener('click',()=>{ Audio_.click(); showPanel('OMNIVERSE: ZERO — an original fan-made prototype blending a Minecraft-style voxel world with Ben 10 Alien Force-inspired transformation and combat mechanics. All characters, names and visuals here are original interpretations.'); });
 $('btn-settings').addEventListener('click',()=>{
   Audio_.click(); const S=readS();
